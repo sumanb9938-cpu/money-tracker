@@ -8,7 +8,7 @@ app.secret_key = "secret123"
 import psycopg2
 import os
 
-DATABASE_URL = "your_render_db_url_here"
+DATABASE_URL = "postgresql://money_user:j43HoywCIxec8E3wmjiX2oTWBsPpBhhn@dpg-d7eaa6naqgkc7383orq0-a/money_tracker_r05u"
 
 conn = psycopg2.connect(DATABASE_URL)
 cursor = conn.cursor()
@@ -50,7 +50,7 @@ def login():
         username = request.form['username']
         password = request.form['password']
 
-        cursor.execute("SELECT * FROM users WHERE username=? AND password=?", (username, password))
+        cursor.execute("SELECT * FROM users WHERE username=%s AND password=%s", (username, password))
         user = cursor.fetchone()
 
         if user:
@@ -61,6 +61,11 @@ def login():
 
     return render_template('login.html')
 
+@app.route('/debug-users')
+def debug_users():
+    cursor.execute("SELECT * FROM users")
+    return str(cursor.fetchall())
+
 
 # ---------------- REGISTER ---------------- #
 @app.route('/register', methods=['GET', 'POST'])
@@ -69,7 +74,7 @@ def register():
         username = request.form['username']
         password = request.form['password']
 
-        cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
+        cursor.execute("INSERT INTO users (username, password) VALUES (%s, %s)", (username, password))
         conn.commit()
 
         return redirect('/login')
@@ -85,13 +90,13 @@ def index():
 
     user_id = session['user_id']
 
-    cursor.execute("SELECT * FROM money_records WHERE user_id=?", (user_id,))
+    cursor.execute("SELECT * FROM money_records WHERE user_id=%s", (user_id,))
     records = cursor.fetchall()
 
-    cursor.execute("SELECT SUM(amount) FROM money_records WHERE type='given' AND status='pending' AND user_id=?", (user_id,))
+    cursor.execute("SELECT SUM(amount) FROM money_records WHERE type='given' AND status='pending' AND user_id=%s", (user_id,))
     to_claim = cursor.fetchone()[0] or 0
 
-    cursor.execute("SELECT SUM(amount) FROM money_records WHERE type='received' AND status='pending' AND user_id=?", (user_id,))
+    cursor.execute("SELECT SUM(amount) FROM money_records WHERE type='received' AND status='pending' AND user_id=%s", (user_id,))
     to_pay = cursor.fetchone()[0] or 0
 
     return render_template('index.html', records=records, to_claim=to_claim, to_pay=to_pay)
@@ -117,7 +122,7 @@ def add():
     cursor.execute("""
         INSERT INTO money_records 
         (serial_no, name, amount, type, date_taken, reason, user_id, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+        VALUES (%s, %s, %s, %s, %s, %s, %s, 'pending')
     """, (serial_no, name, amount, type_, date, reason, user_id))
 
     conn.commit()
@@ -127,7 +132,7 @@ def add():
 # ---------------- DELETE ---------------- #
 @app.route('/delete/<int:id>')
 def delete(id):
-    cursor.execute("DELETE FROM money_records WHERE id=?", (id,))
+    cursor.execute("DELETE FROM money_records WHERE id=%s", (id,))
     conn.commit()
     return redirect('/')
 
@@ -135,7 +140,7 @@ def delete(id):
 # ---------------- MARK PAID ---------------- #
 @app.route('/mark_paid/<int:id>')
 def mark_paid(id):
-    cursor.execute("UPDATE money_records SET status='paid' WHERE id=?", (id,))
+    cursor.execute("UPDATE money_records SET status='paid' WHERE id=%s", (id,))
     conn.commit()
     return redirect('/')
 
