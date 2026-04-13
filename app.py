@@ -9,7 +9,7 @@ app.secret_key = "secret123"
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 if not DATABASE_URL:
-    raise ValueError("DATABASE_URL not set!")
+    DATABASE_URL = "your_postgres_url_here"  # for local testing
 
 conn = psycopg2.connect(DATABASE_URL)
 cursor = conn.cursor()
@@ -47,10 +47,8 @@ def login():
         username = request.form['username']
         password = request.form['password']
 
-        cursor.execute(
-            "SELECT * FROM users WHERE username=%s AND password=%s",
-            (username, password)
-        )
+        cursor.execute("SELECT * FROM users WHERE username=%s AND password=%s",
+                       (username, password))
         user = cursor.fetchone()
 
         if user:
@@ -69,10 +67,8 @@ def register():
         username = request.form['username']
         password = request.form['password']
 
-        cursor.execute(
-            "INSERT INTO users (username, password) VALUES (%s, %s)",
-            (username, password)
-        )
+        cursor.execute("INSERT INTO users (username, password) VALUES (%s, %s)",
+                       (username, password))
         conn.commit()
 
         return redirect('/login')
@@ -80,7 +76,7 @@ def register():
     return render_template('register.html')
 
 
-# ---------------- HOME (DASHBOARD) ---------------- #
+# ---------------- HOME ---------------- #
 @app.route('/')
 def index():
     if 'user_id' not in session:
@@ -88,51 +84,41 @@ def index():
 
     user_id = session['user_id']
 
-    # ALL RECORDS
     cursor.execute("SELECT * FROM money_records WHERE user_id=%s", (user_id,))
     records = cursor.fetchall()
 
-    # TO CLAIM
     cursor.execute("""
     SELECT SUM(amount) FROM money_records 
     WHERE type='given' AND status='pending' AND user_id=%s
     """, (user_id,))
     to_claim = cursor.fetchone()[0] or 0
 
-    # TO PAY
     cursor.execute("""
     SELECT SUM(amount) FROM money_records 
     WHERE type='received' AND status='pending' AND user_id=%s
     """, (user_id,))
     to_pay = cursor.fetchone()[0] or 0
 
-    # PEOPLE SUMMARY (Splitwise logic)
     cursor.execute("""
     SELECT name,
-    SUM(CASE WHEN type='given' THEN amount ELSE 0 END) as given_total,
-    SUM(CASE WHEN type='received' THEN amount ELSE 0 END) as received_total
+    SUM(CASE WHEN type='given' THEN amount ELSE 0 END),
+    SUM(CASE WHEN type='received' THEN amount ELSE 0 END)
     FROM money_records
     WHERE user_id=%s AND status='pending'
     GROUP BY name
     """, (user_id,))
-
     people = cursor.fetchall()
 
-    return render_template(
-        "index.html",
-        records=records,
-        to_claim=to_claim,
-        to_pay=to_pay,
-        people=people
-    )
+    return render_template("index.html",
+                           records=records,
+                           to_claim=to_claim,
+                           to_pay=to_pay,
+                           people=people)
 
 
-# ---------------- ADD RECORD ---------------- #
+# ---------------- ADD ---------------- #
 @app.route('/add', methods=['POST'])
 def add():
-    if 'user_id' not in session:
-        return redirect('/login')
-
     user_id = session['user_id']
 
     name = request.form['name']
@@ -145,13 +131,38 @@ def add():
     serial_no = cursor.fetchone()[0] + 1
 
     cursor.execute("""
-        INSERT INTO money_records 
-        (serial_no, name, amount, type, date_taken, reason, user_id, status)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, 'pending')
+    INSERT INTO money_records 
+    (serial_no, name, amount, type, date_taken, reason, user_id, status)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, 'pending')
     """, (serial_no, name, amount, type_, date, reason, user_id))
 
     conn.commit()
     return redirect('/')
+
+
+# ---------------- EDIT ---------------- #
+@app.route('/edit/<int:id>', methods=['GET', 'POST'])
+def edit(id):
+    if request.method == 'POST':
+        name = request.form['name']
+        amount = request.form['amount']
+        type_ = request.form['type']
+        date = request.form['date']
+        reason = request.form['reason']
+
+        cursor.execute("""
+        UPDATE money_records
+        SET name=%s, amount=%s, type=%s, date_taken=%s, reason=%s
+        WHERE id=%s
+        """, (name, amount, type_, date, reason, id))
+
+        conn.commit()
+        return redirect('/')
+
+    cursor.execute("SELECT * FROM money_records WHERE id=%s", (id,))
+    record = cursor.fetchone()
+
+    return render_template("edit.html", r=record)
 
 
 # ---------------- DELETE ---------------- #
@@ -162,7 +173,7 @@ def delete(id):
     return redirect('/')
 
 
-# ---------------- MARK AS PAID ---------------- #
+# ---------------- MARK PAID ---------------- #
 @app.route('/mark_paid/<int:id>')
 def mark_paid(id):
     cursor.execute("UPDATE money_records SET status='paid' WHERE id=%s", (id,))
@@ -177,6 +188,5 @@ def logout():
     return redirect('/login')
 
 
-# ---------------- RUN ---------------- #
 if __name__ == "__main__":
     app.run(debug=True)
