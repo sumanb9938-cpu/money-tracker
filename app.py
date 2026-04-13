@@ -8,7 +8,7 @@ app.secret_key = "secret123"
 import psycopg2
 import os
 
-DATABASE_URL = "postgresql://money_user:j43HoywCIxec8E3wmjiX2oTWBsPpBhhn@dpg-d7eaa6naqgkc7383orq0-a/money_tracker_r05u"
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 conn = psycopg2.connect(DATABASE_URL)
 cursor = conn.cursor()
