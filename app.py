@@ -1,17 +1,25 @@
 from flask import Flask, render_template, request, redirect, session
-import sqlite3
+
 
 app = Flask(__name__)
 app.secret_key = "secret123"
 
 # ---------------- DATABASE ---------------- #
-conn = sqlite3.connect('database.db', check_same_thread=False)
+import psycopg2
+import os
+
+DATABASE_URL = "your_render_db_url_here"
+
+conn = psycopg2.connect(DATABASE_URL)
 cursor = conn.cursor()
 
+
 # Create tables
+
+
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     username TEXT,
     password TEXT
 )
@@ -19,17 +27,19 @@ CREATE TABLE IF NOT EXISTS users (
 
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS money_records (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    serial_no INTEGER,
+    id SERIAL PRIMARY KEY,
+    serial_no INT,
     name TEXT,
     amount REAL,
     type TEXT,
     date_taken TEXT,
     reason TEXT,
-    user_id INTEGER,
+    user_id INT,
     status TEXT DEFAULT 'pending'
 )
 ''')
+
+conn.commit()
 
 conn.commit()
 
