@@ -9,7 +9,7 @@ app.secret_key = "secret123"
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 if not DATABASE_URL:
-    raise ValueError("DATABASE_URL")
+    raise ValueError("DATABASE_URL not set!")
 
 conn = psycopg2.connect(DATABASE_URL)
 cursor = conn.cursor()
