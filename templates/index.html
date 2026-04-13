@@ -2,53 +2,184 @@
 <html>
 <head>
 <title>Money Tracker</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+body {
+    background: linear-gradient(135deg, #1d2671, #c33764);
+    color: white;
+}
+
+.card {
+    background: rgba(255,255,255,0.2);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+}
+
+table {
+    background: white;
+    color: black;
+}
+</style>
 </head>
 
-<body class="container mt-4">
+<body>
 
-<h3>💸 Dashboard</h3>
+<div class="container mt-4">
 
-<h5>To Claim: ₹{{ to_claim }}</h5>
-<h5>To Pay: ₹{{ to_pay }}</h5>
+<div class="d-flex justify-content-between">
+    <h3>💸 Dashboard</h3>
+    <a href="/logout" class="btn btn-light">Logout</a>
+</div>
 
-<form action="/add" method="POST" class="mb-4">
+<!-- SUMMARY -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card p-3 text-center">
+            <h5>To Claim</h5>
+            <h3>₹{{ to_claim }}</h3>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card p-3 text-center">
+            <h5>To Pay</h5>
+            <h3>₹{{ to_pay }}</h3>
+        </div>
+    </div>
+</div>
+
+<!-- ADD FORM -->
+<form action="/add" method="POST" class="card p-3 mb-4">
+
 <input name="name" placeholder="Name" class="form-control mb-2">
-<input name="amount" placeholder="Amount" class="form-control mb-2">
+
+<input name="amount" type="number" placeholder="Amount" class="form-control mb-2">
 
 <select name="type" class="form-control mb-2">
-<option value="given">💸 Gave Money (To Claim)</option>
-<option value="received">📥 Took Money (To Return)</option>
+    <option value="given">💸 Gave Money (To Claim)</option>
+    <option value="received">📥 Took Money (To Return)</option>
 </select>
 
-<input name="date" class="form-control mb-2">
-<input name="reason" placeholder="Reason" class="form-control mb-2">
+<small class="text-light">
+💡 Gave → You will get money | Took → You need to pay
+</small>
 
-<button class="btn btn-primary">Add</button>
+<input name="date" type="date" class="form-control mt-2">
+
+<input name="reason" placeholder="Reason" class="form-control mt-2">
+
+<button class="btn btn-primary mt-2">Add</button>
+
 </form>
 
-<h4>Records</h4>
+<!-- TABS -->
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <button class="nav-link active" onclick="showTab('claim')">To Claim</button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" onclick="showTab('pay')">To Pay</button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" onclick="showTab('people')">People Summary</button>
+    </li>
+</ul>
 
+<!-- TO CLAIM -->
+<div id="claim">
 <table class="table table-bordered">
 <tr>
-<th>Name</th>
-<th>Amount</th>
-<th>Action</th>
+    <th>Name</th>
+    <th>Amount</th>
+    <th>Action</th>
 </tr>
 
 {% for r in records %}
+{% if r[4]=='given' and r[8]=='pending' %}
 <tr>
-<td>{{ r[2] }}</td>
-<td>₹{{ r[3] }}</td>
-<td>
-<a href="/edit/{{ r[0] }}" class="btn btn-warning btn-sm">Edit</a>
-<a href="/mark_paid/{{ r[0] }}" class="btn btn-success btn-sm">Paid</a>
-<a href="/delete/{{ r[0] }}" class="btn btn-danger btn-sm">Delete</a>
-</td>
+    <td>💸 {{ r[2] }}</td>
+    <td class="text-success fw-bold">₹{{ r[3] }}</td>
+    <td>
+        <a href="/edit/{{ r[0] }}" class="btn btn-warning btn-sm">Edit</a>
+        <a href="/mark_paid/{{ r[0] }}" class="btn btn-success btn-sm">Paid</a>
+        <a href="/delete/{{ r[0] }}" class="btn btn-danger btn-sm">Delete</a>
+    </td>
+</tr>
+{% endif %}
+{% endfor %}
+</table>
+</div>
+
+<!-- TO PAY -->
+<div id="pay" style="display:none;">
+<table class="table table-bordered">
+<tr>
+    <th>Name</th>
+    <th>Amount</th>
+    <th>Action</th>
+</tr>
+
+{% for r in records %}
+{% if r[4]=='received' and r[8]=='pending' %}
+<tr>
+    <td>📥 {{ r[2] }}</td>
+    <td class="text-danger fw-bold">₹{{ r[3] }}</td>
+    <td>
+        <a href="/edit/{{ r[0] }}" class="btn btn-warning btn-sm">Edit</a>
+        <a href="/mark_paid/{{ r[0] }}" class="btn btn-success btn-sm">Paid</a>
+        <a href="/delete/{{ r[0] }}" class="btn btn-danger btn-sm">Delete</a>
+    </td>
+</tr>
+{% endif %}
+{% endfor %}
+</table>
+</div>
+
+<!-- PEOPLE SUMMARY -->
+<div id="people" style="display:none;">
+<table class="table table-bordered">
+<tr>
+    <th>Name</th>
+    <th>Status</th>
+</tr>
+
+{% for p in people %}
+<tr>
+    <td>{{ p[0] }}</td>
+    <td>
+        {% set balance = p[1] - p[2] %}
+        {% if balance > 0 %}
+            <span class="text-success fw-bold">You will get ₹{{ balance }}</span>
+        {% elif balance < 0 %}
+            <span class="text-danger fw-bold">You owe ₹{{ -balance }}</span>
+        {% else %}
+            Settled
+        {% endif %}
+    </td>
 </tr>
 {% endfor %}
-
 </table>
+</div>
+
+</div>
+
+<script>
+function showTab(tab){
+    document.getElementById('claim').style.display='none';
+    document.getElementById('pay').style.display='none';
+    document.getElementById('people').style.display='none';
+
+    document.getElementById(tab).style.display='block';
+
+    let tabs = document.querySelectorAll(".nav-link");
+    tabs.forEach(btn => btn.classList.remove("active"));
+    event.target.classList.add("active");
+}
+</script>
 
 </body>
 </html>
