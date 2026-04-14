@@ -1,185 +1,747 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Money Tracker</title>
+    <meta charset="UTF-8">
+    <title>LedgerPro - Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <!-- Google Fonts for Inter and elegant Serif -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@400;600&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome for Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
 
-<meta name="viewport" content="width=device-width, initial-scale=1">
+        body {
+            background-color: #0b0b0e;
+            color: #f0f0f0;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 40px 40px;
+            overflow-x: hidden;
+            position: relative;
+        }
 
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        /* Ambient global glow for the 'alive' feel  */
+        .ambient-glow {
+            position: fixed;
+            border-radius: 50%;
+            pointer-events: none;
+            mix-blend-mode: screen;
+            z-index: 0;
+        }
+        .glow-1 {
+            width: 60vh; height: 60vh;
+            bottom: -20vh; left: -20vh;
+            background: radial-gradient(circle, rgba(197, 160, 89, 0.05) 0%, transparent 70%);
+            animation: pulseGlow 8s ease-in-out infinite alternate;
+        }
+        .glow-2 {
+            width: 50vh; height: 50vh;
+            top: -10vh; right: -10vh;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.02) 0%, transparent 70%);
+            animation: pulseGlow 10s ease-in-out infinite alternate-reverse;
+        }
 
-<style>
-body {
-    background: linear-gradient(135deg, #1d2671, #c33764);
-    color: white;
-}
+        @keyframes pulseGlow {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(1.3); opacity: 1; }
+        }
 
-.card {
-    background: rgba(255,255,255,0.2);
-    backdrop-filter: blur(10px);
-    border-radius: 15px;
-}
+        /* Mouse cursor active shine */
+        .cursor-shine {
+            position: fixed;
+            top: 0; left: 0;
+            width: 400px; height: 400px;
+            background: radial-gradient(circle, rgba(197, 160, 89, 0.12) 0%, rgba(255,255,255,0.02) 40%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 100;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            mix-blend-mode: screen;
+        }
 
-table {
-    background: white;
-    color: black;
-}
-</style>
+        /* Layout */
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            position: relative;
+            z-index: 10;
+            animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Scroll Zoom-in Animation */
+        .scroll-zoom-in {
+            opacity: 0;
+            transform: scale(0.5); /* Higher intensity zoom */
+            transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1), transform 1s cubic-bezier(0.17, 1.2, 0.4, 1);
+            will-change: opacity, transform;
+        }
+        .scroll-zoom-in.visible {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* Navbar Elements */
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+
+        .logo-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 400;
+            letter-spacing: 2px;
+            font-size: 20px;
+        }
+        .logo-icon {
+            width: 36px; height: 36px;
+            border: 1px solid rgba(197, 160, 89, 0.5);
+            border-radius: 10px;
+            display: flex; justify-content: center; align-items: center;
+            color: #d4af37; font-size: 16px;
+        }
+
+        /* Shared Card Styles */
+        .auth-card {
+            background-color: #121214;
+            border-radius: 15px;
+            padding: 30px;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(212,175,55,0.05), 0 5px 25px rgba(0,0,0,0.5);
+            border: 1px solid rgba(212,175,55,0.1);
+            transform-style: preserve-3d;
+            transition: transform 0.1s ease-out, box-shadow 0.1s ease-out;
+        }
+        .auth-card::before {
+            content: ''; position: absolute; top: 0; left: -150%; width: 50%; height: 100%;
+            background: linear-gradient(to right, transparent, rgba(255,255,255,0.03), rgba(212,175,55,0.1), rgba(255,255,255,0.03), transparent);
+            transform: skewX(-25deg);
+            animation: shineSweep 8s infinite; pointer-events: none; z-index: 1;
+        }
+
+        @keyframes shineSweep {
+            0% { left: -150%; } 20% { left: 250%; } 100% { left: 250%; }
+        }
+
+        h2.serif-text {
+            font-family: 'Playfair Display', serif;
+            font-size: 24px; font-weight: 400; margin-bottom: 20px; color: #f0f0f0;
+        }
+
+        /* Metrics Row */
+        .metrics-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .metric-card {
+            text-align: center;
+            padding: 25px;
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+            cursor: pointer;
+        }
+        .metric-card:hover {
+            transform: translateY(-5px) scale(1.03);
+            box-shadow: inset 0 0 30px rgba(212,175,55,0.1), 0 15px 40px rgba(0,0,0,0.8);
+            border-color: rgba(212,175,55,0.4);
+        }
+        .metric-card h5 {
+            font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #777; margin-bottom: 10px; font-weight: 600;
+        }
+        .metric-card h2 {
+            font-size: 32px; font-family: 'Inter', sans-serif; font-weight: 600;
+        }
+        .text-golden { color: #d4af37; text-shadow: 0 0 20px rgba(212,175,55,0.4); } /* Claim - looks like getting gold */
+        .text-danger  { color: #d65555; text-shadow: 0 0 20px rgba(214,85,85,0.3); } /* Pay - red */
+
+        /* Forms */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+        
+        .form-group {
+            display: flex; flex-direction: column; gap: 8px; position: relative; z-index: 2;
+        }
+        .form-group.full-width { grid-column: 1 / -1; }
+
+        label {
+            font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #777; font-weight: 600;
+        }
+
+        .input-wrapper { position: relative; width: 100%; }
+        .input-wrapper i {
+            position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #555; font-size: 14px; transition: color 0.3s; z-index: 5;
+        }
+        
+        .input-wrapper select,
+        .input-wrapper input {
+            width: 100%; padding: 14px 15px 14px 45px;
+            background: #1a1a1d; border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 8px;
+            font-size: 14px; color: #fff; outline: none; transition: all 0.3s ease;
+            appearance: none; /* remove default arrow */
+        }
+        
+        /* Select specific arrow icon since default is removed */
+        .input-wrapper .fa-chevron-down {
+            left: auto; right: 15px; pointer-events: none;
+        }
+
+        .input-wrapper input::placeholder { color: #444; }
+        .input-wrapper input:focus, .input-wrapper select:focus {
+            background: #1f1f23; border: 1px solid rgba(212, 175, 55, 1); box-shadow: 0 0 15px rgba(212, 175, 55, 0.25);
+        }
+        .input-wrapper input:focus + i, .input-wrapper:focus-within i { color: #d4af37; }
+
+        /* Primary Button (Golden) */
+        .gold-btn {
+            background: linear-gradient(135deg, #dfbc77 0%, #bd9342 100%);
+            color: #000; font-weight: 600; border: none; padding: 14px 20px; border-radius: 8px; font-size: 14px;
+            cursor: pointer; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+            display: inline-flex; justify-content: center; align-items: center; gap: 8px;
+            text-decoration: none; box-shadow: 0 4px 15px rgba(189, 147, 66, 0.2);
+        }
+        .gold-btn:hover {
+            transform: translateY(-2px); box-shadow: 0 6px 20px rgba(189, 147, 66, 0.3); filter: brightness(1.1);
+        }
+        .gold-btn:active { transform: scale(0.97); }
+        .gold-btn.btn-small { padding: 8px 16px; font-size: 12px; }
+
+        /* Segmented Toggle / Tabs */
+        .toggle-group {
+            display: flex; background: #1a1a1d; border-radius: 10px; padding: 5px; margin: 30px 0 20px 0;
+            border: 1px solid rgba(212, 175, 55, 0.2); width: fit-content; margin-left: auto; margin-right: auto;
+        }
+        .toggle-btn {
+            flex: 1; text-align: center; padding: 10px 20px; color: #888; text-decoration: none;
+            font-size: 13px; border-radius: 8px; transition: all 0.3s; font-weight: 500; cursor: pointer;
+            background: transparent; border: none; outline: none; min-width: 120px;
+        }
+        .toggle-btn.active {
+            background: #232328; color: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            border-top: 1px solid rgba(255, 255, 255, 0.1); 
+        }
+        .toggle-btn:hover:not(.active) { color: #ccc; }
+
+        /* Tables */
+        .dark-table {
+            width: 100%; border-collapse: separate; border-spacing: 0;
+            background: #121214; border-radius: 12px; overflow: hidden;
+            box-shadow: inset 0 0 10px rgba(212,175,55,0.05), 0 5px 20px rgba(0,0,0,0.5);
+            border: 1px solid rgba(212,175,55,0.1);
+        }
+        .dark-table th {
+            background: #161619; padding: 16px 20px; text-align: left;
+            color: #777; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+            border-bottom: 1px solid rgba(255,255,255,0.05); font-weight: 600;
+        }
+        .dark-table td {
+            padding: 18px 20px; border-bottom: 1px solid rgba(255,255,255,0.05);
+            color: #f0f0f0; font-size: 14px;
+            transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+        .dark-table tr:last-child td { border-bottom: none; }
+        
+        /* Glorious row hover lift effect */
+        .dark-table tbody tr { cursor: default; }
+        .dark-table tbody tr:hover td { 
+            background-color: #1a1a1f;
+            box-shadow: inset 0 1px 0 rgba(212, 175, 55, 0.4), inset 0 -1px 0 rgba(212, 175, 55, 0.4);
+            color: #fff;
+        }
+        .dark-table tbody tr:hover td:first-child {
+            box-shadow: inset 1px 1px 0 rgba(212, 175, 55, 0.4), inset 0 -1px 0 rgba(212, 175, 55, 0.4);
+            border-top-left-radius: 8px; border-bottom-left-radius: 8px;
+        }
+        .dark-table tbody tr:hover td:last-child {
+            box-shadow: inset 0 1px 0 rgba(212, 175, 55, 0.4), inset -1px -1px 0 rgba(212, 175, 55, 0.4);
+            border-top-right-radius: 8px; border-bottom-right-radius: 8px;
+        }
+        
+        .action-row { display: flex; gap: 8px; }
+        .btn-action {
+            display: inline-flex; align-items: center; gap: 5px; text-decoration: none;
+            padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 500;
+            transition: all 0.2s; border: 1px solid transparent; color: #fff;
+        }
+        .btn-action.edit { background: #222; border-color: #333; }
+        .btn-action.edit:hover { background: #c5a059; color: #000; border-color: #c5a059;}
+        .btn-action.paid { background: rgba(40, 167, 69, 0.15); color: #28a745; border-color: rgba(40, 167, 69, 0.3); }
+        .btn-action.paid:hover { background: #28a745; color: #fff; }
+        .btn-action.delete { background: rgba(220, 53, 69, 0.15); color: #d65555; border-color: rgba(220, 53, 69, 0.3); }
+        .btn-action.delete:hover { background: #d65555; color: #fff; }
+
+        .tab-content { display: none; animation: fadeUp 0.3s ease; }
+        
+        /* Empty states */
+        .empty-state { text-align: center; padding: 40px; color: #777; font-size: 14px; font-style: italic; }
+    </style>
 </head>
-
 <body>
 
-<div class="container mt-4">
+    <div class="ambient-glow glow-1"></div>
+    <div class="ambient-glow glow-2"></div>
 
-<div class="d-flex justify-content-between">
-    <h3>💸 Dashboard</h3>
-    <a href="/logout" class="btn btn-light">Logout</a>
-</div>
+    <div class="container">
+        
+        <nav class="navbar">
+            <div class="logo-row">
+                <div class="logo-icon"><i class="fas fa-bullseye"></i></div>
+                <div>LEDGER<span style="font-weight:300; opacity:0.8;">PRO</span></div>
+            </div>
+            <a href="/logout" class="gold-btn btn-small"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </nav>
 
-<!-- SUMMARY -->
-<div class="row mb-4">
-    <div class="col-md-6">
-        <div class="card p-3 text-center">
-            <h5>To Claim</h5>
-            <h3>₹{{ to_claim }}</h3>
+        <!-- Metrics -->
+        <div class="metrics-row scroll-zoom-in">
+            <div class="auth-card metric-card">
+                <h5>To Claim (Owed to you)</h5>
+                <h2 class="text-golden">₹<span class="animated-number" data-target="{{ to_claim }}">0</span></h2>
+            </div>
+            <div class="auth-card metric-card">
+                <h5>To Pay (You owe)</h5>
+                <h2 class="text-danger">₹<span class="animated-number" data-target="{{ to_pay }}">0</span></h2>
+            </div>
         </div>
+
+        <!-- Dashboard Charts -->
+        <div class="scroll-zoom-in" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+            <div class="auth-card" style="padding: 20px;">
+                <h5 style="text-align:center; color:#777; font-size:12px; text-transform:uppercase; letter-spacing:1px; margin-bottom:15px; font-weight:600;">Overall Balance Split</h5>
+                <div style="position: relative; height: 250px; width: 100%; display: flex; justify-content: center;">
+                    <canvas id="splitChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="auth-card" style="padding: 20px;">
+                <h5 style="text-align:center; color:#777; font-size:12px; text-transform:uppercase; letter-spacing:1px; margin-bottom:15px; font-weight:600;">Person-wise Balances</h5>
+                <div style="position: relative; height: 250px; width: 100%;">
+                    <canvas id="peopleChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Transaction Form -->
+        <div class="auth-card scroll-zoom-in" style="margin-top: 150px; margin-bottom: 20px;">
+            <h2 class="serif-text">Add New Record</h2>
+            <form action="/add" method="POST">
+                <div class="form-grid">
+                    
+                    <div class="form-group">
+                        <label>Name</label>
+                        <div class="input-wrapper">
+                            <i class="far fa-user"></i>
+                            <input type="text" name="name" placeholder="Person's name" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Amount</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-rupee-sign"></i>
+                            <input type="number" name="amount" placeholder="0.00" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label>Transaction Type</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-exchange-alt"></i>
+                            <select name="type" required>
+                                <option value="given">💸 I Gave Money (To Claim later)</option>
+                                <option value="received">📥 I Took Money (To Pay later)</option>
+                            </select>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Date</label>
+                        <div class="input-wrapper">
+                           <i class="far fa-calendar-alt"></i>
+                           <input type="date" name="date" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Reason (Optional)</label>
+                        <div class="input-wrapper">
+                           <i class="fas fa-comment-dots"></i>
+                           <input type="text" name="reason" placeholder="e.g. Dinner, Rent...">
+                        </div>
+                    </div>
+                </div>
+
+                <div style="text-align: right; margin-top: 25px; position:relative; z-index:2;">
+                    <button type="submit" class="gold-btn"><i class="fas fa-plus"></i> Save Record</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Tabs -->
+        <div class="toggle-group">
+            <button type="button" class="toggle-btn active" onclick="showTab('claim', this)">To Claim</button>
+            <button type="button" class="toggle-btn" onclick="showTab('pay', this)">To Pay</button>
+            <button type="button" class="toggle-btn" onclick="showTab('people', this)">Summary</button>
+        </div>
+
+        <!-- Tables container -->
+        
+        <!-- TO CLAIM -->
+        <div id="claim" class="tab-content" style="display:block;">
+            <table class="dark-table">
+                <tr>
+                    <th>Name</th>
+                    <th>Detail</th>
+                    <th>Amount</th>
+                    <th>Action</th>
+                </tr>
+                {% set cl_count = 0 %}
+                {% for r in records %}
+                {% if r[4]=='given' and r[8]=='pending' %}
+                {% set cl_count = cl_count + 1 %}
+                <tr>
+                    <td><b style="color:#d4af37"><i class="fas fa-arrow-up" style="font-size:10px; margin-right:5px;"></i> {{ r[2] }}</b></td>
+                    <td style="color:#888; font-size:12px;">{{ r[6] }} <br><small>{{ r[5] }}</small></td>
+                    <td class="text-golden fw-bold">₹{{ r[3] }}</td>
+                    <td>
+                        <div class="action-row">
+                            <a href="/edit/{{ r[0] }}" class="btn-action edit"><i class="fas fa-pen"></i> Edit</a>
+                            <a href="/mark_paid/{{ r[0] }}" class="btn-action paid"><i class="fas fa-check"></i> Paid</a>
+                            <a href="/delete/{{ r[0] }}" class="btn-action delete"><i class="fas fa-trash"></i></a>
+                        </div>
+                    </td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </table>
+            <!-- Added script tag logic inside jinja doesn't perfectly count on UI side without extra jinja vars, so just an empty table is fine -->
+        </div>
+
+        <!-- TO PAY -->
+        <div id="pay" class="tab-content">
+            <table class="dark-table">
+                <tr>
+                    <th>Name</th>
+                    <th>Detail</th>
+                    <th>Amount</th>
+                    <th>Action</th>
+                </tr>
+                {% for r in records %}
+                {% if r[4]=='received' and r[8]=='pending' %}
+                <tr>
+                    <td><b style="color:#d65555"><i class="fas fa-arrow-down" style="font-size:10px; margin-right:5px;"></i> {{ r[2] }}</b></td>
+                    <td style="color:#888; font-size:12px;">{{ r[6] }} <br><small>{{ r[5] }}</small></td>
+                    <td class="text-danger fw-bold">₹{{ r[3] }}</td>
+                    <td>
+                        <div class="action-row">
+                            <a href="/edit/{{ r[0] }}" class="btn-action edit"><i class="fas fa-pen"></i> Edit</a>
+                            <a href="/mark_paid/{{ r[0] }}" class="btn-action paid"><i class="fas fa-check"></i> Paid</a>
+                            <a href="/delete/{{ r[0] }}" class="btn-action delete"><i class="fas fa-trash"></i></a>
+                        </div>
+                    </td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </table>
+        </div>
+
+        <!-- PEOPLE SUMMARY -->
+        <div id="people" class="tab-content">
+            <table class="dark-table">
+                <tr>
+                    <th>Person Name</th>
+                    <th>Overall Balance Status</th>
+                </tr>
+                {% for p in people %}
+                <tr>
+                    <td><b><i class="far fa-user-circle" style="color: #888; margin-right: 5px;"></i> <a href="/person/{{ p[0] }}" style="color: #f0f0f0; text-decoration: none; border-bottom: 1px dashed #555; transition: all 0.3s;" onmouseover="this.style.color='#d4af37'; this.style.borderBottomColor='#d4af37';" onmouseout="this.style.color='#f0f0f0'; this.style.borderBottomColor='#555';">{{ p[0] }}</a></b></td>
+                    <td>
+                        {% set balance = p[1] - p[2] %}
+                        {% if balance > 0 %}
+                            <span class="text-golden" style="font-weight:600;"><i class="fas fa-chart-line"></i> Collect ₹{{ balance }}</span>
+                        {% elif balance < 0 %}
+                            <span class="text-danger" style="font-weight:600;"><i class="fas fa-exclamation-circle"></i> Repay ₹{{ -balance }}</span>
+                        {% else %}
+                            <span style="color:#888"><i class="fas fa-check-circle"></i> Settled</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
     </div>
 
-    <div class="col-md-6">
-        <div class="card p-3 text-center">
-            <h5>To Pay</h5>
-            <h3>₹{{ to_pay }}</h3>
-        </div>
-    </div>
-</div>
+    <!-- Mouse Tracker script -->
+    <script>
+        // Tabs logic
+        function showTab(tabId, btnElement){
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+            // Remove active class
+            document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
+            
+            // Show specific
+            document.getElementById(tabId).style.display = 'block';
+            if(btnElement) btnElement.classList.add('active');
+        }
 
-<!-- ADD FORM -->
-<form action="/add" method="POST" class="card p-3 mb-4">
+        // Advanced Mouse Shine Effect
+        const shine = document.createElement('div');
+        shine.className = 'cursor-shine';
+        document.body.appendChild(shine);
 
-<input name="name" placeholder="Name" class="form-control mb-2">
+        window.addEventListener('mousemove', (e) => {
+            shine.style.opacity = '1';
+            shine.style.left = e.clientX + 'px';
+            shine.style.top = e.clientY + 'px';
+        });
 
-<input name="amount" type="number" placeholder="Amount" class="form-control mb-2">
+        window.addEventListener('mouseout', (e) => {
+            if (e.relatedTarget === null) {
+                shine.style.opacity = '0';
+            }
+        });
 
-<select name="type" class="form-control mb-2">
-    <option value="given">💸 Gave Money (To Claim)</option>
-    <option value="received">📥 Took Money (To Return)</option>
-</select>
+        // Number Spin-Up Animation (Smooth Ease-Out)
+        function animateNumbers() {
+            const counters = document.querySelectorAll('.animated-number');
+            const animationDuration = 2500; // Takes exactly 2.5 seconds
 
-<small class="text-light">
-💡 Gave → You will get money | Took → You need to pay
-</small>
+            counters.forEach(counter => {
+                const target = +counter.getAttribute('data-target');
+                if (target === 0) return;
 
-<input name="date" type="date" class="form-control mt-2">
+                let startTimestamp = null;
+                
+                // Ease-out expo curve for beautiful deceleration 
+                const easeOutExpo = (t) => {
+                    return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+                };
 
-<input name="reason" placeholder="Reason" class="form-control mt-2">
+                const step = (timestamp) => {
+                    if (!startTimestamp) startTimestamp = timestamp;
+                    const progress = timestamp - startTimestamp;
+                    
+                    const progressRatio = Math.min(progress / animationDuration, 1);
+                    const easedProgress = easeOutExpo(progressRatio);
 
-<button class="btn btn-primary mt-2">Add</button>
+                    const currentCount = Math.floor(easedProgress * target);
+                    counter.innerText = currentCount;
 
-</form>
+                    if (progress < animationDuration) {
+                        window.requestAnimationFrame(step);
+                    } else {
+                        counter.innerText = target;
+                    }
+                };
 
-<!-- TABS -->
-<ul class="nav nav-tabs mb-3">
-    <li class="nav-item">
-        <button class="nav-link active" onclick="showTab('claim')">To Claim</button>
-    </li>
-    <li class="nav-item">
-        <button class="nav-link" onclick="showTab('pay')">To Pay</button>
-    </li>
-    <li class="nav-item">
-        <button class="nav-link" onclick="showTab('people')">People Summary</button>
-    </li>
-</ul>
+                window.requestAnimationFrame(step);
+            });
+        }
+        
+        // Execute smooth animation on load
+        window.addEventListener('load', animateNumbers);
 
-<!-- TO CLAIM -->
-<div id="claim">
-<table class="table table-bordered">
-<tr>
-    <th>Name</th>
-    <th>Amount</th>
-    <th>Action</th>
-</tr>
+        // 3D Parallax Tilt Effect
+        document.querySelectorAll('.auth-card').forEach(card => {
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                
+                const rotateX = ((y - centerY) / centerY) * -5; // max 5 degrees tilt
+                const rotateY = ((x - centerX) / centerX) * 5;
+                
+                card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
+                card.style.boxShadow = `inset 0 0 30px rgba(212,175,55,0.1), 0 15px 40px rgba(0,0,0,0.7)`;
+            });
+            
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
+                card.style.boxShadow = `inset 0 0 20px rgba(212,175,55,0.05), 0 5px 25px rgba(0,0,0,0.5)`;
+                card.style.transition = 'transform 0.5s ease-out, box-shadow 0.5s ease-out';
+            });
+            
+            card.addEventListener('mouseenter', () => {
+                card.style.transition = 'transform 0.1s ease-out, box-shadow 0.1s ease-out';
+            });
+        });
 
-{% for r in records %}
-{% if r[4]=='given' and r[8]=='pending' %}
-<tr>
-    <td>💸 {{ r[2] }}</td>
-    <td class="text-success fw-bold">₹{{ r[3] }}</td>
-    <td>
-        <a href="/edit/{{ r[0] }}" class="btn btn-warning btn-sm">Edit</a>
-        <a href="/mark_paid/{{ r[0] }}" class="btn btn-success btn-sm">Paid</a>
-        <a href="/delete/{{ r[0] }}" class="btn btn-danger btn-sm">Delete</a>
-    </td>
-</tr>
-{% endif %}
-{% endfor %}
-</table>
-</div>
+        // Interactive Confetti Engine
+        function burstConfetti(x, y) {
+            const colors = ['#d4af37', '#ffd700', '#daa520', '#b8860b'];
+            confetti({
+                particleCount: 100,
+                spread: 120,
+                origin: { x: x / window.innerWidth, y: y / window.innerHeight },
+                colors: colors,
+                zIndex: 9999
+            });
+        }
 
-<!-- TO PAY -->
-<div id="pay" style="display:none;">
-<table class="table table-bordered">
-<tr>
-    <th>Name</th>
-    <th>Amount</th>
-    <th>Action</th>
-</tr>
+        // Attach Confetti to form submissions
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', (e) => {
+                e.preventDefault(); 
+                burstConfetti(e.clientX || (window.innerWidth / 2), e.clientY || (window.innerHeight / 2));
+                setTimeout(() => { form.submit(); }, 600);
+            });
+        });
 
-{% for r in records %}
-{% if r[4]=='received' and r[8]=='pending' %}
-<tr>
-    <td>📥 {{ r[2] }}</td>
-    <td class="text-danger fw-bold">₹{{ r[3] }}</td>
-    <td>
-        <a href="/edit/{{ r[0] }}" class="btn btn-warning btn-sm">Edit</a>
-        <a href="/mark_paid/{{ r[0] }}" class="btn btn-success btn-sm">Paid</a>
-        <a href="/delete/{{ r[0] }}" class="btn btn-danger btn-sm">Delete</a>
-    </td>
-</tr>
-{% endif %}
-{% endfor %}
-</table>
-</div>
+        // Attach Confetti to Mark as Paid link
+        document.querySelectorAll('.btn-action.paid').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                burstConfetti(e.clientX, e.clientY);
+                setTimeout(() => { window.location.href = btn.href; }, 600);
+            });
+        });
 
-<!-- PEOPLE SUMMARY -->
-<div id="people" style="display:none;">
-<table class="table table-bordered">
-<tr>
-    <th>Name</th>
-    <th>Status</th>
-</tr>
+        // Initialize Charts with Gold-on-Black theme
+        const claimAmount = {{ to_claim }};
+        const payAmount = {{ to_pay }};
 
-{% for p in people %}
-<tr>
-    <td>{{ p[0] }}</td>
-    <td>
-        {% set balance = p[1] - p[2] %}
-        {% if balance > 0 %}
-            <span class="text-success fw-bold">You will get ₹{{ balance }}</span>
-        {% elif balance < 0 %}
-            <span class="text-danger fw-bold">You owe ₹{{ -balance }}</span>
-        {% else %}
-            Settled
-        {% endif %}
-    </td>
-</tr>
-{% endfor %}
-</table>
-</div>
+        // Pie Chart
+        const ctxSplit = document.getElementById('splitChart').getContext('2d');
+        new Chart(ctxSplit, {
+            type: 'doughnut',
+            data: {
+                labels: ['To Claim (Gold)', 'To Pay (Red)'],
+                datasets: [{
+                    data: [claimAmount, payAmount],
+                    backgroundColor: ['#d4af37', '#d65555'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: '#bbb', font: { family: 'Inter', size: 11 } }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.8)', titleColor: '#fff', bodyColor: '#fff', borderColor: '#444', borderWidth: 1
+                    }
+                }
+            }
+        });
 
-</div>
+        // Bar Chart
+        const peopleLabels = [
+            {% for p in people %}
+                "{{ p[0] }}",
+            {% endfor %}
+        ];
+        
+        const peopleBalances = [
+            {% for p in people %}
+                {{ p[1] - p[2] }},
+            {% endfor %}
+        ];
+        
+        const barColors = peopleBalances.map(bal => bal >= 0 ? '#d4af37' : '#d65555');
 
-<script>
-function showTab(tab){
-    document.getElementById('claim').style.display='none';
-    document.getElementById('pay').style.display='none';
-    document.getElementById('people').style.display='none';
+        const ctxPeople = document.getElementById('peopleChart').getContext('2d');
+        new Chart(ctxPeople, {
+            type: 'bar',
+            data: {
+                labels: peopleLabels,
+                datasets: [{
+                    label: 'Net Balance',
+                    data: peopleBalances,
+                    backgroundColor: barColors,
+                    borderRadius: 4,
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { 
+                        grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
+                        ticks: { color: '#888', font: { family: 'Inter', size: 10 } }
+                    },
+                    x: {
+                        grid: { display: false, drawBorder: false },
+                        ticks: { color: '#bbb', font: { family: 'Inter', size: 11 } }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) { label += ': '; }
+                                if (context.parsed.y !== null) { label += '₹' + Math.abs(context.parsed.y); }
+                                return label + (context.parsed.y >= 0 ? ' (Collect)' : ' (Pay)');
+                            }
+                        }
+                    }
+                }
+            }
+        });
 
-    document.getElementById(tab).style.display='block';
+        // Scroll Zoom-in and Zoom-out Animation Observer
+        const zoomObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                } else {
+                    entry.target.classList.remove('visible'); // Zoom out when scrolling away
+                }
+            });
+        }, { threshold: 0.1 });
 
-    let tabs = document.querySelectorAll(".nav-link");
-    tabs.forEach(btn => btn.classList.remove("active"));
-    event.target.classList.add("active");
-}
-</script>
+        document.querySelectorAll('.scroll-zoom-in').forEach(el => {
+            zoomObserver.observe(el);
+        });
+
+    </script>
+
 
 </body>
 </html>

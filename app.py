@@ -1,23 +1,19 @@
 from flask import Flask, render_template, request, redirect, session
-import psycopg2
+import sqlite3
 import os
 
 app = Flask(__name__)
 app.secret_key = "secret123"
 
 # ---------------- DATABASE ---------------- #
-DATABASE_URL = os.environ.get("DATABASE_URL")
-
-if not DATABASE_URL:
-    DATABASE_URL = "your_postgres_url_here"  # for local testing
-
-conn = psycopg2.connect(DATABASE_URL)
+# Using sqlite3 instead of psycopg2 for easy local testing
+conn = sqlite3.connect('database.db', check_same_thread=False)
 cursor = conn.cursor()
 
 # ---------------- CREATE TABLES ---------------- #
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT,
     password TEXT
 )
@@ -25,7 +21,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS money_records (
-    id SERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     serial_no INT,
     name TEXT,
     amount REAL,
@@ -47,7 +43,7 @@ def login():
         username = request.form['username']
         password = request.form['password']
 
-        cursor.execute("SELECT * FROM users WHERE username=%s AND password=%s",
+        cursor.execute("SELECT * FROM users WHERE username=? AND password=?",
                        (username, password))
         user = cursor.fetchone()
 
@@ -67,7 +63,7 @@ def register():
         username = request.form['username']
         password = request.form['password']
 
-        cursor.execute("INSERT INTO users (username, password) VALUES (%s, %s)",
+        cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)",
                        (username, password))
         conn.commit()
 
@@ -84,18 +80,18 @@ def index():
 
     user_id = session['user_id']
 
-    cursor.execute("SELECT * FROM money_records WHERE user_id=%s", (user_id,))
+    cursor.execute("SELECT * FROM money_records WHERE user_id=?", (user_id,))
     records = cursor.fetchall()
 
     cursor.execute("""
     SELECT SUM(amount) FROM money_records 
-    WHERE type='given' AND status='pending' AND user_id=%s
+    WHERE type='given' AND status='pending' AND user_id=?
     """, (user_id,))
     to_claim = cursor.fetchone()[0] or 0
 
     cursor.execute("""
     SELECT SUM(amount) FROM money_records 
-    WHERE type='received' AND status='pending' AND user_id=%s
+    WHERE type='received' AND status='pending' AND user_id=?
     """, (user_id,))
     to_pay = cursor.fetchone()[0] or 0
 
@@ -104,7 +100,7 @@ def index():
     SUM(CASE WHEN type='given' THEN amount ELSE 0 END),
     SUM(CASE WHEN type='received' THEN amount ELSE 0 END)
     FROM money_records
-    WHERE user_id=%s AND status='pending'
+    WHERE user_id=? AND status='pending'
     GROUP BY name
     """, (user_id,))
     people = cursor.fetchall()
@@ -128,12 +124,13 @@ def add():
     reason = request.form['reason']
 
     cursor.execute("SELECT COUNT(*) FROM money_records")
-    serial_no = cursor.fetchone()[0] + 1
+    count_row = cursor.fetchone()
+    serial_no = (count_row[0] if count_row else 0) + 1
 
     cursor.execute("""
     INSERT INTO money_records 
     (serial_no, name, amount, type, date_taken, reason, user_id, status)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, 'pending')
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
     """, (serial_no, name, amount, type_, date, reason, user_id))
 
     conn.commit()
@@ -152,14 +149,14 @@ def edit(id):
 
         cursor.execute("""
         UPDATE money_records
-        SET name=%s, amount=%s, type=%s, date_taken=%s, reason=%s
-        WHERE id=%s
+        SET name=?, amount=?, type=?, date_taken=?, reason=?
+        WHERE id=?
         """, (name, amount, type_, date, reason, id))
 
         conn.commit()
         return redirect('/')
 
-    cursor.execute("SELECT * FROM money_records WHERE id=%s", (id,))
+    cursor.execute("SELECT * FROM money_records WHERE id=?", (id,))
     record = cursor.fetchone()
 
     return render_template("edit.html", r=record)
@@ -168,7 +165,7 @@ def edit(id):
 # ---------------- DELETE ---------------- #
 @app.route('/delete/<int:id>')
 def delete(id):
-    cursor.execute("DELETE FROM money_records WHERE id=%s", (id,))
+    cursor.execute("DELETE FROM money_records WHERE id=?", (id,))
     conn.commit()
     return redirect('/')
 
@@ -176,9 +173,43 @@ def delete(id):
 # ---------------- MARK PAID ---------------- #
 @app.route('/mark_paid/<int:id>')
 def mark_paid(id):
-    cursor.execute("UPDATE money_records SET status='paid' WHERE id=%s", (id,))
+    cursor.execute("UPDATE money_records SET status='paid' WHERE id=?", (id,))
     conn.commit()
     return redirect('/')
+
+
+# ---------------- PERSON DETAIL ---------------- #
+@app.route('/person/<string:name>')
+def person_detail(name):
+    if 'user_id' not in session:
+        return redirect('/login')
+
+    user_id = session['user_id']
+
+    # Fetch all records for this specific person
+    cursor.execute("SELECT * FROM money_records WHERE user_id=? AND name=? ORDER BY date_taken DESC", (user_id, name))
+    records = cursor.fetchall()
+
+    # Get specific aggregations for this person
+    cursor.execute("""
+    SELECT 
+    SUM(CASE WHEN type='given' THEN amount ELSE 0 END),
+    SUM(CASE WHEN type='received' THEN amount ELSE 0 END)
+    FROM money_records
+    WHERE user_id=? AND name=? AND status='pending'
+    """, (user_id, name))
+    
+    res = cursor.fetchone()
+    total_claim = res[0] or 0
+    total_pay = res[1] or 0
+    balance = total_claim - total_pay
+
+    return render_template("person.html",
+                           name=name,
+                           records=records,
+                           total_claim=total_claim,
+                           total_pay=total_pay,
+                           balance=balance)
 
 
 # ---------------- LOGOUT ---------------- #
@@ -189,4 +220,4 @@ def logout():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, port=5000)
