@@ -11,6 +11,15 @@
     <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     
+    <script>
+        // Check if user has already seen auth animations
+        if (sessionStorage.getItem('visited_auth')) {
+            document.documentElement.classList.add('skip-anim');
+        } else {
+            sessionStorage.setItem('visited_auth', 'true');
+        }
+    </script>
+    
     <style>
         * {
             box-sizing: border-box;
@@ -98,6 +107,16 @@
         }
         @keyframes fadeUpTagline {
             to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Bypass Animations if visited */
+        html.skip-anim .fly-in-letter, 
+        html.skip-anim .form-section, 
+        html.skip-anim .brand-tagline.start-hidden {
+            animation: none !important;
+            opacity: 1 !important;
+            transform: none !important;
+            filter: blur(0) !important;
         }
 
         .giant-brand {
