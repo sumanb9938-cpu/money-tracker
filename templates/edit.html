@@ -201,7 +201,7 @@
                     <label>Name</label>
                     <div class="input-wrapper">
                         <i class="far fa-user"></i>
-                        <input type="text" name="name" value="{{ r[2] }}" required>
+                        <input type="text" name="name" value="{{ r.name }}" required>
                     </div>
                 </div>
 
@@ -209,7 +209,7 @@
                     <label>Amount</label>
                     <div class="input-wrapper">
                         <i class="fas fa-rupee-sign"></i>
-                        <input type="number" name="amount" value="{{ r[3] }}" required>
+                        <input type="number" name="amount" value="{{ r.amount }}" step="0.01" required>
                     </div>
                 </div>
 
@@ -218,8 +218,8 @@
                     <div class="input-wrapper">
                         <i class="fas fa-exchange-alt"></i>
                         <select name="type" required>
-                            <option value="given" {% if r[4]=='given' %}selected{% endif %}>💸 I Gave (Collect later)</option>
-                            <option value="received" {% if r[4]=='received' %}selected{% endif %}>📥 I Took (Pay later)</option>
+                            <option value="given" {% if r.type == 'given' %}selected{% endif %}>💸 I Gave (Collect later)</option>
+                            <option value="received" {% if r.type == 'received' %}selected{% endif %}>📥 I Took (Pay later)</option>
                         </select>
                         <i class="fas fa-chevron-down"></i>
                     </div>
@@ -229,7 +229,7 @@
                     <label>Date</label>
                     <div class="input-wrapper">
                         <i class="far fa-calendar-alt"></i>
-                        <input type="date" name="date" value="{{ r[5] }}" required>
+                        <input type="date" name="date" value="{{ r.date_taken }}" required>
                     </div>
                 </div>
 
@@ -237,7 +237,7 @@
                     <label>Reason</label>
                     <div class="input-wrapper">
                         <i class="fas fa-comment-dots"></i>
-                        <input type="text" name="reason" value="{{ r[6] }}">
+                        <input type="text" name="reason" value="{{ r.reason if r.reason else '' }}">
                     </div>
                 </div>
 

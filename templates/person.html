@@ -5,269 +5,112 @@
     <title>LedgerPro - {{ name }}'s Details</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     
-    <!-- Google Fonts for Inter and elegant Serif -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@400;600&display=swap" rel="stylesheet">
-    
-    <!-- FontAwesome for Icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    
-    <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Inter', sans-serif;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background-color: #0b0b0e; color: #f0f0f0; background-image: linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px); background-size: 40px 40px; overflow-x: hidden; position: relative; }
+        .ambient-glow { position: fixed; border-radius: 50%; pointer-events: none; mix-blend-mode: screen; z-index: 0; }
+        .glow-1 { width: 60vh; height: 60vh; bottom: -20vh; left: -20vh; background: radial-gradient(circle, rgba(197, 160, 89, 0.05) 0%, transparent 70%); animation: pulseGlow 8s ease-in-out infinite alternate; }
+        .glow-2 { width: 50vh; height: 50vh; top: -10vh; right: -10vh; background: radial-gradient(circle, rgba(255, 255, 255, 0.02) 0%, transparent 70%); animation: pulseGlow 10s ease-in-out infinite alternate-reverse; }
+        @keyframes pulseGlow { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(1.3); opacity: 1; } }
 
-        body {
-            background-color: #0b0b0e;
-            color: #f0f0f0;
-            background-image: 
-                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-            background-size: 40px 40px;
-            overflow-x: hidden;
-            position: relative;
-        }
+        .cursor-shine { position: fixed; top: 0; left: 0; width: 400px; height: 400px; background: radial-gradient(circle, rgba(197, 160, 89, 0.12) 0%, rgba(255,255,255,0.02) 40%, transparent 70%); border-radius: 50%; pointer-events: none; z-index: 100; transform: translate(-50%, -50%); opacity: 0; transition: opacity 0.3s ease; mix-blend-mode: screen; }
 
-        /* Ambient global glow for the 'alive' feel  */
-        .ambient-glow {
-            position: fixed;
-            border-radius: 50%;
-            pointer-events: none;
-            mix-blend-mode: screen;
-            z-index: 0;
-        }
-        .glow-1 {
-            width: 60vh; height: 60vh;
-            bottom: -20vh; left: -20vh;
-            background: radial-gradient(circle, rgba(197, 160, 89, 0.05) 0%, transparent 70%);
-            animation: pulseGlow 8s ease-in-out infinite alternate;
-        }
-        .glow-2 {
-            width: 50vh; height: 50vh;
-            top: -10vh; right: -10vh;
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.02) 0%, transparent 70%);
-            animation: pulseGlow 10s ease-in-out infinite alternate-reverse;
-        }
+        /* Toast Notifications */
+        #toast-container { position: fixed; bottom: 30px; right: 30px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+        .toast { background: rgba(26, 26, 29, 0.9); backdrop-filter: blur(10px); color: #fff; padding: 15px 25px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border-left: 4px solid #d4af37; transform: translateX(120%); opacity: 0; transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 500; }
+        .toast.show { transform: translateX(0); opacity: 1; }
+        .toast.error { border-left-color: #d65555; }
+        .toast i { font-size: 18px; color: #d4af37; }
+        .toast.error i { color: #d65555; }
 
-        @keyframes pulseGlow {
-            0% { transform: scale(1); opacity: 0.8; }
-            100% { transform: scale(1.3); opacity: 1; }
-        }
+        .container { max-width: 1000px; margin: 0 auto; padding: 40px 20px; position: relative; z-index: 10; animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Mouse cursor active shine */
-        .cursor-shine {
-            position: fixed;
-            top: 0; left: 0;
-            width: 400px; height: 400px;
-            background: radial-gradient(circle, rgba(197, 160, 89, 0.12) 0%, rgba(255,255,255,0.02) 40%, transparent 70%);
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 100;
-            transform: translate(-50%, -50%);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            mix-blend-mode: screen;
-        }
+        .scroll-zoom-in { opacity: 0; transform: scale(0.85); transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); will-change: opacity, transform; }
+        .scroll-zoom-in.visible { opacity: 1; transform: scale(1); }
 
-        /* Layout */
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 40px 20px;
-            position: relative;
-            z-index: 10;
-            animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
+        .navbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+        .logo-row { display: flex; align-items: center; gap: 10px; font-weight: 400; letter-spacing: 2px; font-size: 20px; }
+        .logo-icon { width: 36px; height: 36px; border: 1px solid rgba(197, 160, 89, 0.5); border-radius: 10px; display: flex; justify-content: center; align-items: center; color: #d4af37; font-size: 16px; }
 
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        .page-title { font-family: 'Playfair Display', serif; font-size: 32px; font-weight: 400; margin-bottom: 10px; color: #f0f0f0; text-align: center; }
+        .subtitle { text-align: center; color: #888; font-size: 14px; margin-bottom: 30px; letter-spacing: 1px; text-transform: uppercase; }
 
-        /* Scroll Zoom-in Animation */
-        .scroll-zoom-in {
-            opacity: 0;
-            transform: scale(0.85);
-            transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-            will-change: opacity, transform;
-        }
-        .scroll-zoom-in.visible {
-            opacity: 1;
-            transform: scale(1);
-        }
+        .auth-card { background-color: #121214; border-radius: 15px; padding: 30px; color: #fff; position: relative; overflow: hidden; box-shadow: inset 0 0 20px rgba(212,175,55,0.05), 0 5px 25px rgba(0,0,0,0.5); border: 1px solid rgba(212,175,55,0.1); transform-style: preserve-3d; transition: transform 0.1s ease-out, box-shadow 0.1s ease-out; margin-bottom: 30px; }
+        .auth-card::before { content: ''; position: absolute; top: 0; left: -150%; width: 50%; height: 100%; background: linear-gradient(to right, transparent, rgba(255,255,255,0.03), rgba(212,175,55,0.1), rgba(255,255,255,0.03), transparent); transform: skewX(-25deg); animation: shineSweep 8s infinite; pointer-events: none; z-index: 1; }
+        @keyframes shineSweep { 0% { left: -150%; } 20% { left: 250%; } 100% { left: 250%; } }
 
-        /* Navbar Elements */
-        .navbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 40px;
-        }
-
-        .logo-row {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-weight: 400;
-            letter-spacing: 2px;
-            font-size: 20px;
-        }
-        .logo-icon {
-            width: 36px; height: 36px;
-            border: 1px solid rgba(197, 160, 89, 0.5);
-            border-radius: 10px;
-            display: flex; justify-content: center; align-items: center;
-            color: #d4af37; font-size: 16px;
-        }
-
-        .page-title {
-            font-family: 'Playfair Display', serif;
-            font-size: 32px; font-weight: 400; margin-bottom: 10px; color: #f0f0f0;
-            text-align: center;
-        }
-        .subtitle {
-            text-align: center;
-            color: #888;
-            font-size: 14px;
-            margin-bottom: 30px;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-        }
-
-        /* Shared Card Styles */
-        .auth-card {
-            background-color: #121214;
-            border-radius: 15px;
-            padding: 30px;
-            color: #fff;
-            position: relative;
-            overflow: hidden;
-            box-shadow: inset 0 0 20px rgba(212,175,55,0.05), 0 5px 25px rgba(0,0,0,0.5);
-            border: 1px solid rgba(212,175,55,0.1);
-            transform-style: preserve-3d;
-            transition: transform 0.1s ease-out, box-shadow 0.1s ease-out;
-            margin-bottom: 30px;
-        }
-        .auth-card::before {
-            content: ''; position: absolute; top: 0; left: -150%; width: 50%; height: 100%;
-            background: linear-gradient(to right, transparent, rgba(255,255,255,0.03), rgba(212,175,55,0.1), rgba(255,255,255,0.03), transparent);
-            transform: skewX(-25deg);
-            animation: shineSweep 8s infinite; pointer-events: none; z-index: 1;
-        }
-
-        @keyframes shineSweep {
-            0% { left: -150%; } 20% { left: 250%; } 100% { left: 250%; }
-        }
-
-        /* Metrics Row specific to person */
-        .person-metric {
-            text-align: center;
-            padding: 25px;
-        }
-        .person-metric h5 {
-            font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #777; margin-bottom: 10px; font-weight: 600;
-        }
-        .person-metric h2 {
-            font-size: 40px; font-family: 'Inter', sans-serif; font-weight: 600;
-        }
-        
+        .person-metric { text-align: center; padding: 25px; }
+        .person-metric h5 { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #777; margin-bottom: 10px; font-weight: 600; }
+        .person-metric h2 { font-size: 40px; font-family: 'Inter', sans-serif; font-weight: 600; }
         .text-golden { color: #d4af37; text-shadow: 0 0 20px rgba(212,175,55,0.4); } 
         .text-danger  { color: #d65555; text-shadow: 0 0 20px rgba(214,85,85,0.3); } 
         .text-neutral { color: #888; text-shadow: none; }
 
-        /* Primary Button (Golden) */
-        .gold-btn {
-            background: linear-gradient(135deg, #dfbc77 0%, #bd9342 100%);
-            color: #000; font-weight: 600; border: none; padding: 14px 20px; border-radius: 8px; font-size: 14px;
-            cursor: pointer; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-            display: inline-flex; justify-content: center; align-items: center; gap: 8px;
-            text-decoration: none; box-shadow: 0 4px 15px rgba(189, 147, 66, 0.2);
-        }
-        .gold-btn:hover {
-            transform: translateY(-2px); box-shadow: 0 6px 20px rgba(189, 147, 66, 0.3); filter: brightness(1.1);
-        }
+        .gold-btn { background: linear-gradient(135deg, #dfbc77 0%, #bd9342 100%); color: #000; font-weight: 600; border: none; padding: 14px 20px; border-radius: 8px; font-size: 14px; cursor: pointer; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); display: inline-flex; justify-content: center; align-items: center; gap: 8px; text-decoration: none; box-shadow: 0 4px 15px rgba(189, 147, 66, 0.2); }
+        .gold-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(189, 147, 66, 0.3); filter: brightness(1.1); }
         .gold-btn:active { transform: scale(0.97); }
         .gold-btn.btn-small { padding: 8px 16px; font-size: 12px; }
 
-        /* Tables */
-        .dark-table {
-            width: 100%; border-collapse: separate; border-spacing: 0;
-            background: #121214; border-radius: 12px; overflow: hidden;
-            box-shadow: inset 0 0 10px rgba(212,175,55,0.05), 0 5px 20px rgba(0,0,0,0.5);
-            border: 1px solid rgba(212,175,55,0.1);
-        }
-        .dark-table th {
-            background: #161619; padding: 16px 20px; text-align: left;
-            color: #777; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
-            border-bottom: 1px solid rgba(255,255,255,0.05); font-weight: 600;
-        }
-        .dark-table td {
-            padding: 18px 20px; border-bottom: 1px solid rgba(255,255,255,0.05);
-            color: #f0f0f0; font-size: 14px;
-            transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
-        }
+        /* Tables & Sorting */
+        .dark-table { width: 100%; border-collapse: separate; border-spacing: 0; background: #121214; border-radius: 12px; overflow: hidden; box-shadow: inset 0 0 10px rgba(212,175,55,0.05), 0 5px 20px rgba(0,0,0,0.5); border: 1px solid rgba(212,175,55,0.1); }
+        .dark-table th { background: #161619; padding: 16px 20px; text-align: left; color: #777; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.05); font-weight: 600; cursor: pointer; user-select: none; transition: color 0.2s; }
+        .dark-table th:hover { color: #d4af37; }
+        .dark-table th i { margin-left: 5px; font-size: 10px; opacity: 0.5; }
+        .dark-table td { padding: 18px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #f0f0f0; font-size: 14px; transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1); }
         .dark-table tr:last-child td { border-bottom: none; }
-        
         .dark-table tbody tr { cursor: default; }
-        .dark-table tbody tr:hover td { 
-            background-color: #1a1a1f;
-            box-shadow: inset 0 1px 0 rgba(212, 175, 55, 0.4), inset 0 -1px 0 rgba(212, 175, 55, 0.4);
-            color: #fff;
-        }
-        .dark-table tbody tr:hover td:first-child {
-            box-shadow: inset 1px 1px 0 rgba(212, 175, 55, 0.4), inset 0 -1px 0 rgba(212, 175, 55, 0.4);
-            border-top-left-radius: 8px; border-bottom-left-radius: 8px;
-        }
-        .dark-table tbody tr:hover td:last-child {
-            box-shadow: inset 0 1px 0 rgba(212, 175, 55, 0.4), inset -1px -1px 0 rgba(212, 175, 55, 0.4);
-            border-top-right-radius: 8px; border-bottom-right-radius: 8px;
-        }
+        .dark-table tbody tr:hover td { background-color: #1a1a1f; box-shadow: inset 0 1px 0 rgba(212, 175, 55, 0.4), inset 0 -1px 0 rgba(212, 175, 55, 0.4); color: #fff; }
+        .dark-table tbody tr:hover td:first-child { box-shadow: inset 1px 1px 0 rgba(212, 175, 55, 0.4), inset 0 -1px 0 rgba(212, 175, 55, 0.4); border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+        .dark-table tbody tr:hover td:last-child { box-shadow: inset 0 1px 0 rgba(212, 175, 55, 0.4), inset -1px -1px 0 rgba(212, 175, 55, 0.4); border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
         
-        .action-row { display: flex; gap: 8px; }
-        .btn-action {
-            display: inline-flex; align-items: center; gap: 5px; text-decoration: none;
-            padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 500;
-            transition: all 0.2s; border: 1px solid transparent; color: #fff;
-        }
+        .action-row { display: flex; gap: 8px; flex-wrap: wrap; }
+        .btn-action { display: inline-flex; align-items: center; gap: 5px; text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 500; transition: all 0.2s; border: 1px solid transparent; color: #fff; cursor: pointer;}
         .btn-action.edit { background: #222; border-color: #333; }
         .btn-action.edit:hover { background: #c5a059; color: #000; border-color: #c5a059;}
         .btn-action.paid { background: rgba(40, 167, 69, 0.15); color: #28a745; border-color: rgba(40, 167, 69, 0.3); }
         .btn-action.paid:hover { background: #28a745; color: #fff; }
+        .btn-action.partial { background: rgba(212, 175, 55, 0.15); color: #d4af37; border-color: rgba(212, 175, 55, 0.3); }
+        .btn-action.partial:hover { background: #d4af37; color: #000; }
         .btn-action.delete { background: rgba(220, 53, 69, 0.15); color: #d65555; border-color: rgba(220, 53, 69, 0.3); }
         .btn-action.delete:hover { background: #d65555; color: #fff; }
 
-        .status-badge {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        .status-pending {
-            background: rgba(212, 175, 55, 0.1);
-            color: #d4af37;
-            border: 1px solid rgba(212, 175, 55, 0.3);
-        }
-        .status-paid {
-            background: rgba(40, 167, 69, 0.1);
-            color: #28a745;
-            border: 1px solid rgba(40, 167, 69, 0.3);
-        }
+        .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+        .status-pending { background: rgba(212, 175, 55, 0.1); color: #d4af37; border: 1px solid rgba(212, 175, 55, 0.3); }
+        .status-paid { background: rgba(40, 167, 69, 0.1); color: #28a745; border: 1px solid rgba(40, 167, 69, 0.3); }
+        
+        .progress-wrapper { width: 100%; background: #222; border-radius: 4px; height: 6px; margin-top: 8px; overflow: hidden; position: relative; }
+        .progress-bar { height: 100%; background: #d4af37; box-shadow: 0 0 10px rgba(212,175,55,0.5); border-radius: 4px; transition: width 0.5s ease; }
+
+        .empty-state { text-align: center; padding: 60px 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.7; }
+        .empty-state i { font-size: 48px; color: #333; margin-bottom: 15px; }
+        .empty-state p { color: #888; font-size: 14px; margin-bottom: 20px; }
         
     </style>
 </head>
 <body>
 
+    <div id="toast-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="toast {{ category }}">
+                <i class="fas {% if category == 'success' %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %}"></i>
+                <span>{{ message }}</span>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+    </div>
+
     <div class="ambient-glow glow-1"></div>
     <div class="ambient-glow glow-2"></div>
 
     <div class="container">
-        
         <nav class="navbar">
             <div class="logo-row">
                 <div class="logo-icon"><i class="fas fa-bullseye"></i></div>
@@ -283,13 +126,13 @@
         <div class="auth-card person-metric scroll-zoom-in">
             <h5>Overall Net Balance</h5>
             {% if balance > 0 %}
-                <h2 class="text-golden animated-number" data-target="{{ balance }}">₹0</h2>
+                <h2 class="text-golden"><span class="currency-format" data-value="{{ balance }}"></span></h2>
                 <p style="color:#d4af37; margin-top:10px; font-size:14px;"><i class="fas fa-arrow-circle-down"></i> You need to collect</p>
             {% elif balance < 0 %}
-                <h2 class="text-danger animated-number" data-target="{{ -balance }}">₹0</h2>
+                <h2 class="text-danger"><span class="currency-format" data-value="{{ -balance }}"></span></h2>
                 <p style="color:#d65555; margin-top:10px; font-size:14px;"><i class="fas fa-arrow-circle-up"></i> You need to pay</p>
             {% else %}
-                <h2 class="text-neutral">₹0</h2>
+                <h2 class="text-neutral"><span class="currency-format" data-value="0"></span></h2>
                 <p style="color:#888; margin-top:10px; font-size:14px;"><i class="fas fa-check-circle"></i> Completely Settled</p>
             {% endif %}
         </div>
@@ -298,173 +141,185 @@
             <h2 style="font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 400; color: #f0f0f0;">All Records</h2>
         </div>
 
-        <table class="dark-table scroll-zoom-in">
-            <tr>
-                <th>Date</th>
-                <th>Detail</th>
-                <th>Type</th>
-                <th>Status</th>
-                <th>Amount</th>
-                <th>Action</th>
-            </tr>
+        {% if records %}
+        <table class="dark-table sortable scroll-zoom-in">
+            <thead>
+                <tr>
+                    <th onclick="sortTable(this, 0)">Date <i class="fas fa-sort"></i></th>
+                    <th onclick="sortTable(this, 1)">Detail <i class="fas fa-sort"></i></th>
+                    <th onclick="sortTable(this, 2)">Type <i class="fas fa-sort"></i></th>
+                    <th onclick="sortTable(this, 3)">Status <i class="fas fa-sort"></i></th>
+                    <th onclick="sortTable(this, 4, true)">Amount <i class="fas fa-sort"></i></th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
             {% for r in records %}
             <tr>
-                <td style="color:#888; font-size:13px;"><i class="far fa-calendar-alt"></i> {{ r[5] }}</td>
-                <td style="color:#ccc; font-size:14px;">{{ r[6] if r[6] else '--' }}</td>
+                <td style="color:#888; font-size:13px;"><i class="far fa-calendar-alt"></i> {{ r.date_taken }}</td>
+                <td style="color:#ccc; font-size:14px;">{{ r.reason if r.reason else '--' }}</td>
                 <td>
-                    {% if r[4] == 'given' %}
+                    {% if r.type == 'given' %}
                         <span style="color:#d4af37"><i class="fas fa-arrow-up" style="font-size:10px; margin-right:4px;"></i> Claim</span>
                     {% else %}
                         <span style="color:#d65555"><i class="fas fa-arrow-down" style="font-size:10px; margin-right:4px;"></i> Pay</span>
                     {% endif %}
                 </td>
                 <td>
-                    {% if r[8] == 'pending' %}
+                    {% if r.status == 'pending' %}
                         <span class="status-badge status-pending">Pending</span>
                     {% else %}
                         <span class="status-badge status-paid">Paid</span>
                     {% endif %}
                 </td>
-                <td class="{% if r[4] == 'given' %}text-golden{% else %}text-danger{% endif %} fw-bold">₹{{ r[3] }}</td>
+                <td data-sort-value="{{ r.amount - r.paid_amount }}">
+                    <span class="{% if r.type == 'given' %}text-golden{% else %}text-danger{% endif %} fw-bold currency-format" data-value="{{ r.amount - r.paid_amount }}"></span>
+                    {% if r.paid_amount > 0 and r.status == 'pending' %}
+                        <br><small style="color:#777; font-size:10px;">of <span class="currency-format" data-value="{{ r.amount }}"></span> total</small>
+                        <div class="progress-wrapper">
+                            <div class="progress-bar {% if r.type == 'received' %}bg-danger{% endif %}" style="width: {{ (r.paid_amount / r.amount * 100)|round }}%; {% if r.type == 'received' %}background:#d65555;{% endif %}"></div>
+                        </div>
+                    {% endif %}
+                </td>
                 <td>
                     <div class="action-row">
-                        <a href="/edit/{{ r[0] }}" class="btn-action edit"><i class="fas fa-pen"></i></a>
-                        {% if r[8] == 'pending' %}
-                        <a href="/mark_paid/{{ r[0] }}" class="btn-action paid"><i class="fas fa-check"></i></a>
+                        {% if r.status == 'pending' %}
+                            <form action="/partial_pay/{{ r.id }}" method="POST" style="display:inline; margin:0;" onsubmit="return handlePartialPay(this, {{ r.amount - r.paid_amount }});">
+                                <button type="submit" class="btn-action partial"><i class="fas fa-coins"></i></button>
+                            </form>
+                            <a href="/mark_paid/{{ r.id }}" class="btn-action paid"><i class="fas fa-check"></i></a>
                         {% endif %}
-                        <a href="/delete/{{ r[0] }}" class="btn-action delete"><i class="fas fa-trash"></i></a>
+                        <a href="/edit/{{ r.id }}" class="btn-action edit"><i class="fas fa-pen"></i></a>
+                        <a href="/delete/{{ r.id }}" class="btn-action delete"><i class="fas fa-trash"></i></a>
                     </div>
                 </td>
             </tr>
             {% endfor %}
-            {% if not records %}
-            <tr>
-                <td colspan="6" style="text-align: center; padding: 40px; color: #777; font-style: italic;">No records found for {{ name }}.</td>
-            </tr>
-            {% endif %}
+            </tbody>
         </table>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-folder-open"></i>
+            <p>No records found for {{ name }}.</p>
+        </div>
+        {% endif %}
 
     </div>
 
-    <!-- Mouse Tracker script -->
     <script>
-        // Advanced Mouse Shine Effect
+        // Currency Formatting using Intl
+        const formatter = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' });
+        document.querySelectorAll('.currency-format').forEach(el => {
+            const val = parseFloat(el.getAttribute('data-value'));
+            el.innerText = formatter.format(val);
+        });
+
+        // Toast Messages
+        document.addEventListener('DOMContentLoaded', () => {
+            const toasts = document.querySelectorAll('.toast');
+            toasts.forEach((toast, index) => {
+                setTimeout(() => {
+                    toast.classList.add('show');
+                    setTimeout(() => { toast.classList.remove('show'); }, 4000);
+                }, index * 200);
+            });
+        });
+
+        // Handle Partial Pay Popup
+        function handlePartialPay(form, remaining) {
+            const amount = prompt(`Enter partial payment amount (Remaining: ${formatter.format(remaining)}):`);
+            if (amount === null || amount.trim() === '') return false;
+            
+            const parsed = parseFloat(amount);
+            if (isNaN(parsed) || parsed <= 0) { alert("Invalid amount."); return false; }
+            if (parsed > remaining) { alert("You cannot pay more than the remaining amount."); return false; }
+            
+            const input = document.createElement("input");
+            input.type = "hidden"; input.name = "pay_amount"; input.value = parsed;
+            form.appendChild(input); return true;
+        }
+
+        // Table Sorting logic
+        function sortTable(thElement, columnIdx, isNumeric = false) {
+            const table = thElement.closest('.dark-table');
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            const isAsc = thElement.classList.contains('asc');
+            
+            table.querySelectorAll('th').forEach(th => th.classList.remove('asc', 'desc'));
+            thElement.classList.add(isAsc ? 'desc' : 'asc');
+
+            rows.sort((a, b) => {
+                let cellA = a.children[columnIdx].getAttribute('data-sort-value') || a.children[columnIdx].innerText.replace(/[^0-9.-]+/g,"");
+                let cellB = b.children[columnIdx].getAttribute('data-sort-value') || b.children[columnIdx].innerText.replace(/[^0-9.-]+/g,"");
+                
+                if (isNumeric) { return isAsc ? parseFloat(cellB) - parseFloat(cellA) : parseFloat(cellA) - parseFloat(cellB); } 
+                else { return isAsc ? cellB.localeCompare(cellA) : cellA.localeCompare(cellB); }
+            });
+
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const scrollPos = sessionStorage.getItem('scrollPosition_' + window.location.pathname);
+            if (scrollPos) {
+                window.scrollTo(0, parseInt(scrollPos));
+                sessionStorage.removeItem('scrollPosition_' + window.location.pathname);
+            }
+        });
+
+        window.addEventListener('beforeunload', () => {
+            sessionStorage.setItem('scrollPosition_' + window.location.pathname, window.scrollY);
+        });
+
         const shine = document.createElement('div');
         shine.className = 'cursor-shine';
         document.body.appendChild(shine);
 
         window.addEventListener('mousemove', (e) => {
-            shine.style.opacity = '1';
-            shine.style.left = e.clientX + 'px';
-            shine.style.top = e.clientY + 'px';
+            shine.style.opacity = '1'; shine.style.left = e.clientX + 'px'; shine.style.top = e.clientY + 'px';
         });
 
         window.addEventListener('mouseout', (e) => {
-            if (e.relatedTarget === null) {
-                shine.style.opacity = '0';
-            }
+            if (e.relatedTarget === null) { shine.style.opacity = '0'; }
         });
 
-        // Number Spin-Up Animation (Smooth Ease-Out)
-        function animateNumbers() {
-            const counters = document.querySelectorAll('.animated-number');
-            const animationDuration = 2500; 
-
-            counters.forEach(counter => {
-                const target = +counter.getAttribute('data-target');
-                if (target === 0) return;
-
-                let startTimestamp = null;
-                
-                const easeOutExpo = (t) => {
-                    return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
-                };
-
-                const step = (timestamp) => {
-                    if (!startTimestamp) startTimestamp = timestamp;
-                    const progress = timestamp - startTimestamp;
-                    
-                    const progressRatio = Math.min(progress / animationDuration, 1);
-                    const easedProgress = easeOutExpo(progressRatio);
-
-                    const currentCount = Math.floor(easedProgress * target);
-                    counter.innerText = '₹' + currentCount;
-
-                    if (progress < animationDuration) {
-                        window.requestAnimationFrame(step);
-                    } else {
-                        counter.innerText = '₹' + target;
-                    }
-                };
-
-                window.requestAnimationFrame(step);
-            });
-        }
-        
-        window.addEventListener('load', animateNumbers);
-
-        // 3D Parallax Tilt Effect
         document.querySelectorAll('.auth-card').forEach(card => {
             card.addEventListener('mousemove', (e) => {
                 const rect = card.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                
-                const centerX = rect.width / 2;
-                const centerY = rect.height / 2;
-                
-                const rotateX = ((y - centerY) / centerY) * -5;
-                const rotateY = ((x - centerX) / centerX) * 5;
-                
+                const x = e.clientX - rect.left; const y = e.clientY - rect.top;
+                const centerX = rect.width / 2; const centerY = rect.height / 2;
+                const rotateX = ((y - centerY) / centerY) * -5; const rotateY = ((x - centerX) / centerX) * 5;
                 card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
                 card.style.boxShadow = `inset 0 0 30px rgba(212,175,55,0.1), 0 15px 40px rgba(0,0,0,0.7)`;
             });
-            
             card.addEventListener('mouseleave', () => {
                 card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
                 card.style.boxShadow = `inset 0 0 20px rgba(212,175,55,0.05), 0 5px 25px rgba(0,0,0,0.5)`;
                 card.style.transition = 'transform 0.5s ease-out, box-shadow 0.5s ease-out';
             });
-            
             card.addEventListener('mouseenter', () => {
                 card.style.transition = 'transform 0.1s ease-out, box-shadow 0.1s ease-out';
             });
         });
 
-        // Interactive Confetti Engine
         function burstConfetti(x, y) {
-            const colors = ['#d4af37', '#ffd700', '#daa520', '#b8860b'];
-            confetti({
-                particleCount: 100,
-                spread: 120,
-                origin: { x: x / window.innerWidth, y: y / window.innerHeight },
-                colors: colors,
-                zIndex: 9999
-            });
+            confetti({ particleCount: 100, spread: 120, origin: { x: x / window.innerWidth, y: y / window.innerHeight }, colors: ['#d4af37', '#ffd700', '#daa520', '#b8860b'], zIndex: 9999 });
         }
 
-        // Attach Confetti to Mark as Paid link
         document.querySelectorAll('.btn-action.paid').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                burstConfetti(e.clientX, e.clientY);
+                e.preventDefault(); burstConfetti(e.clientX, e.clientY);
                 setTimeout(() => { window.location.href = btn.href; }, 600);
             });
         });
 
-        // Scroll Zoom-in Animation Observer
         const zoomObserver = new IntersectionObserver((entries, observer) => {
             entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('visible');
-                    observer.unobserve(entry.target); 
-                }
+                if (entry.isIntersecting) { entry.target.classList.add('visible'); observer.unobserve(entry.target); }
             });
         }, { threshold: 0.1 });
-
-        document.querySelectorAll('.scroll-zoom-in').forEach(el => {
-            zoomObserver.observe(el);
-        });
+        document.querySelectorAll('.scroll-zoom-in').forEach(el => zoomObserver.observe(el));
 
     </script>
 </body>
