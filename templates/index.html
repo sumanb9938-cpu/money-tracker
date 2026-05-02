@@ -307,6 +307,126 @@
         
         /* Empty states */
         .empty-state { text-align: center; padding: 40px; color: #777; font-size: 14px; font-style: italic; }
+        
+        /* Floating Action Bar */
+        .floating-action-bar {
+            position: fixed;
+            bottom: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a1a1f;
+            border: 1px solid rgba(212,175,55,0.2);
+            border-radius: 12px;
+            padding: 15px 25px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8), inset 0 0 15px rgba(212,175,55,0.1);
+            z-index: 1000;
+            transition: bottom 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .floating-action-bar.visible {
+            bottom: 30px;
+        }
+        .floating-action-bar .selected-count {
+            color: #d4af37;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        /* Custom Checkbox */
+        input[type="checkbox"] {
+            appearance: none;
+            background-color: #222;
+            margin: 0;
+            font: inherit;
+            color: currentColor;
+            width: 18px;
+            height: 18px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            display: grid;
+            place-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        input[type="checkbox"]::before {
+            content: "";
+            width: 10px;
+            height: 10px;
+            transform: scale(0);
+            transition: 120ms transform ease-in-out;
+            box-shadow: inset 1em 1em #121214;
+            background-color: #121214;
+            transform-origin: center;
+            clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+        }
+        input[type="checkbox"]:checked {
+            background-color: #d4af37;
+            border-color: #d4af37;
+        }
+        input[type="checkbox"]:checked::before {
+            transform: scale(1);
+        }
+
+        /* Mobile Card View for Tables */
+        @media screen and (max-width: 768px) {
+            .dark-table, .dark-table tbody, .dark-table tr, .dark-table td {
+                display: block;
+                width: 100%;
+            }
+            .dark-table th {
+                display: none;
+            }
+            .dark-table tr {
+                margin-bottom: 15px;
+                background: rgba(18, 18, 20, 0.7);
+                border-radius: 12px;
+                padding: 10px;
+                box-shadow: inset 0 0 10px rgba(212,175,55,0.05), 0 5px 20px rgba(0,0,0,0.5);
+                border-bottom: none;
+            }
+            .dark-table tr:first-child {
+                display: none;
+            }
+            .dark-table td {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 10px 15px;
+                text-align: right;
+                border-bottom: 1px solid rgba(255,255,255,0.02);
+            }
+            .dark-table td:last-child {
+                border-bottom: none;
+            }
+            .dark-table td::before {
+                content: attr(data-label);
+                font-size: 11px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                color: #777;
+                font-weight: 600;
+                text-align: left;
+                margin-right: 15px;
+                flex-shrink: 0;
+            }
+            .action-row {
+                justify-content: flex-end;
+                width: 100%;
+            }
+            .floating-action-bar {
+                width: 90%;
+                flex-direction: column;
+                gap: 10px;
+            }
+            .form-grid {
+                grid-template-columns: 1fr !important;
+            }
+            .metrics-row {
+                flex-direction: column;
+            }
+        }
     </style>
 </head>
 <body>
@@ -410,11 +530,35 @@
             </form>
         </div>
 
+        <!-- Search & Filter Bar -->
+        <div class="auth-card scroll-zoom-in" style="margin-bottom: 20px; padding: 20px;">
+            <div class="form-grid" style="grid-template-columns: 2fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <div class="input-wrapper">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchInput" placeholder="Search by name..." onkeyup="filterTransactions()">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="input-wrapper">
+                        <i class="fas fa-filter"></i>
+                        <select id="typeFilter" onchange="filterTransactions()">
+                            <option value="all">All Types</option>
+                            <option value="given">To Claim (Given)</option>
+                            <option value="received">To Pay (Received)</option>
+                        </select>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Tabs -->
         <div class="toggle-group">
             <button type="button" class="toggle-btn active" onclick="showTab('claim', this)">To Claim</button>
             <button type="button" class="toggle-btn" onclick="showTab('pay', this)">To Pay</button>
             <button type="button" class="toggle-btn" onclick="showTab('people', this)">Summary</button>
+            <button type="button" class="toggle-btn" onclick="showTab('history', this)">History</button>
         </div>
 
         <!-- Tables container -->
@@ -423,6 +567,7 @@
         <div id="claim" class="tab-content" style="display:block;">
             <table class="dark-table">
                 <tr>
+                    <th style="width:40px;"><input type="checkbox" onchange="toggleSelectAll('claim', this)"></th>
                     <th>Name</th>
                     <th>Detail</th>
                     <th>Amount</th>
@@ -432,14 +577,15 @@
                 {% for r in records %}
                 {% if r[4]=='given' and r[8]=='pending' %}
                 {% set cl_count = cl_count + 1 %}
-                <tr>
-                    <td><b style="color:#d4af37"><i class="fas fa-arrow-up" style="font-size:10px; margin-right:5px;"></i> {{ r[2] }}</b></td>
-                    <td style="color:#888; font-size:12px;">{{ r[6] }} <br><small>{{ r[5] }}</small></td>
-                    <td class="text-golden fw-bold">₹{{ r[3] }}</td>
-                    <td>
+                <tr class="transaction-row" data-name="{{ r[2]|lower }}" data-type="{{ r[4] }}">
+                    <td data-label="Select"><input type="checkbox" class="row-checkbox" value="{{ r[0] }}" onchange="updateFloatingBar()"></td>
+                    <td data-label="Name"><b style="color:#d4af37"><i class="fas fa-arrow-up" style="font-size:10px; margin-right:5px;"></i> {{ r[2] }}</b></td>
+                    <td data-label="Detail" style="color:#888; font-size:12px;">{{ r[6] }} <br><small>{{ r[5] }}</small></td>
+                    <td data-label="Amount" class="text-golden fw-bold">₹{{ r[3] }}</td>
+                    <td data-label="Action">
                         <div class="action-row">
                             <a href="/edit/{{ r[0] }}" class="btn-action edit"><i class="fas fa-pen"></i> Edit</a>
-                            <a href="/mark_paid/{{ r[0] }}" class="btn-action paid"><i class="fas fa-check"></i> Paid</a>
+                            <a href="/mark_paid/{{ r[0] }}" class="btn-action paid"><i class="fas fa-handshake"></i> Settle</a>
                             <a href="/delete/{{ r[0] }}" class="btn-action delete"><i class="fas fa-trash"></i></a>
                         </div>
                     </td>
@@ -454,6 +600,7 @@
         <div id="pay" class="tab-content">
             <table class="dark-table">
                 <tr>
+                    <th style="width:40px;"><input type="checkbox" onchange="toggleSelectAll('pay', this)"></th>
                     <th>Name</th>
                     <th>Detail</th>
                     <th>Amount</th>
@@ -461,14 +608,15 @@
                 </tr>
                 {% for r in records %}
                 {% if r[4]=='received' and r[8]=='pending' %}
-                <tr>
-                    <td><b style="color:#d65555"><i class="fas fa-arrow-down" style="font-size:10px; margin-right:5px;"></i> {{ r[2] }}</b></td>
-                    <td style="color:#888; font-size:12px;">{{ r[6] }} <br><small>{{ r[5] }}</small></td>
-                    <td class="text-danger fw-bold">₹{{ r[3] }}</td>
-                    <td>
+                <tr class="transaction-row" data-name="{{ r[2]|lower }}" data-type="{{ r[4] }}">
+                    <td data-label="Select"><input type="checkbox" class="row-checkbox" value="{{ r[0] }}" onchange="updateFloatingBar()"></td>
+                    <td data-label="Name"><b style="color:#d65555"><i class="fas fa-arrow-down" style="font-size:10px; margin-right:5px;"></i> {{ r[2] }}</b></td>
+                    <td data-label="Detail" style="color:#888; font-size:12px;">{{ r[6] }} <br><small>{{ r[5] }}</small></td>
+                    <td data-label="Amount" class="text-danger fw-bold">₹{{ r[3] }}</td>
+                    <td data-label="Action">
                         <div class="action-row">
                             <a href="/edit/{{ r[0] }}" class="btn-action edit"><i class="fas fa-pen"></i> Edit</a>
-                            <a href="/mark_paid/{{ r[0] }}" class="btn-action paid"><i class="fas fa-check"></i> Paid</a>
+                            <a href="/mark_paid/{{ r[0] }}" class="btn-action paid"><i class="fas fa-handshake"></i> Settle</a>
                             <a href="/delete/{{ r[0] }}" class="btn-action delete"><i class="fas fa-trash"></i></a>
                         </div>
                     </td>
@@ -486,10 +634,10 @@
                     <th>Overall Balance Status</th>
                 </tr>
                 {% for p in people %}
-                <tr>
-                    <td><b><i class="far fa-user-circle" style="color: #888; margin-right: 5px;"></i> <a href="/person/{{ p[0] }}" style="color: #f0f0f0; text-decoration: none; border-bottom: 1px dashed #555; transition: all 0.3s;" onmouseover="this.style.color='#d4af37'; this.style.borderBottomColor='#d4af37';" onmouseout="this.style.color='#f0f0f0'; this.style.borderBottomColor='#555';">{{ p[0] }}</a></b></td>
-                    <td>
-                        {% set balance = p[1] - p[2] %}
+                {% set balance = p[1] - p[2] %}
+                <tr class="transaction-row" data-name="{{ p[0]|lower }}" data-type="{% if balance > 0 %}given{% elif balance < 0 %}received{% else %}settled{% endif %}">
+                    <td data-label="Person"><b><i class="far fa-user-circle" style="color: #888; margin-right: 5px;"></i> <a href="/person/{{ p[0] }}" style="color: #f0f0f0; text-decoration: none; border-bottom: 1px dashed #555; transition: all 0.3s;" onmouseover="this.style.color='#d4af37'; this.style.borderBottomColor='#d4af37';" onmouseout="this.style.color='#f0f0f0'; this.style.borderBottomColor='#555';">{{ p[0] }}</a></b></td>
+                    <td data-label="Status">
                         {% if balance > 0 %}
                             <span class="text-golden" style="font-weight:600;"><i class="fas fa-chart-line"></i> Collect ₹{{ balance }}</span>
                         {% elif balance < 0 %}
@@ -503,10 +651,74 @@
             </table>
         </div>
 
+        <!-- HISTORY -->
+        <div id="history" class="tab-content">
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 15px;">
+                <a href="/export/csv" class="gold-btn btn-small"><i class="fas fa-file-csv"></i> Export as CSV</a>
+            </div>
+            <table class="dark-table">
+                <tr>
+                    <th style="width:40px;"><input type="checkbox" onchange="toggleSelectAll('history', this)"></th>
+                    <th>Date</th>
+                    <th>Name</th>
+                    <th>Detail</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+                {% for r in records %}
+                {% if r[8]=='paid' %}
+                <tr class="transaction-row" data-name="{{ r[2]|lower }}" data-type="{{ r[4] }}">
+                    <td data-label="Select"><input type="checkbox" class="row-checkbox" value="{{ r[0] }}" onchange="updateFloatingBar()"></td>
+                    <td data-label="Date" style="color:#888; font-size:13px;"><i class="far fa-calendar-alt"></i> {{ r[5] }}</td>
+                    <td data-label="Name"><b style="color:#aaa"><i class="fas fa-check-circle" style="font-size:10px; margin-right:5px;"></i> {{ r[2] }}</b></td>
+                    <td data-label="Detail" style="color:#888; font-size:12px;">{{ r[6] }}</td>
+                    <td data-label="Type" style="color:#aaa; font-size:12px;">{% if r[4]=='given' %}Given{% else %}Received{% endif %}</td>
+                    <td data-label="Amount" style="font-weight: bold; color: {% if r[4]=='given' %}#d4af37{% else %}#d65555{% endif %}">₹{{ r[3] }}</td>
+                    <td data-label="Status" style="color:#28a745; font-size:12px; font-weight:bold;">Settled</td>
+                    <td data-label="Action">
+                        <div class="action-row">
+                            <a href="/delete/{{ r[0] }}" class="btn-action delete"><i class="fas fa-trash"></i></a>
+                        </div>
+                    </td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </table>
+        </div>
+
+    </div>
+
+    <!-- Floating Action Bar -->
+    <div class="floating-action-bar" id="floatingBar">
+        <div class="selected-count"><span id="selectedCountText">0</span> Selected</div>
+        <button class="gold-btn btn-small" onclick="bulkAction('settle')" id="bulkSettleBtn"><i class="fas fa-handshake"></i> Bulk Settle</button>
+        <button class="gold-btn btn-small" style="background: rgba(220, 53, 69, 0.2); color: #d65555; border: 1px solid rgba(220, 53, 69, 0.4); box-shadow: none;" onclick="bulkAction('delete')" id="bulkDeleteBtn"><i class="fas fa-trash"></i> Bulk Delete</button>
     </div>
 
     <!-- Mouse Tracker script -->
     <script>
+        // Search & Filter Logic
+        function filterTransactions() {
+            const searchVal = document.getElementById('searchInput').value.toLowerCase();
+            const typeVal = document.getElementById('typeFilter').value;
+            
+            document.querySelectorAll('.transaction-row').forEach(row => {
+                const name = row.getAttribute('data-name') || '';
+                const type = row.getAttribute('data-type') || '';
+                
+                const matchesSearch = name.includes(searchVal);
+                const matchesType = (typeVal === 'all') || (type === typeVal);
+                
+                if (matchesSearch && matchesType) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
         // Tabs logic
         function showTab(tabId, btnElement){
             // Hide all tabs
@@ -518,8 +730,86 @@
             document.getElementById(tabId).style.display = 'block';
             if(btnElement) btnElement.classList.add('active');
             
+            // Uncheck checkboxes and update floating bar
+            document.querySelectorAll('th input[type="checkbox"]').forEach(cb => cb.checked = false);
+            document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+            if(typeof updateFloatingBar === 'function') updateFloatingBar();
+            
             // Save tab state
             sessionStorage.setItem('dashboardActiveTab', tabId);
+        }
+
+        // Bulk Actions Logic
+        function toggleSelectAll(tab, el) {
+            const tabContent = document.getElementById(tab);
+            const checkboxes = tabContent.querySelectorAll('.row-checkbox');
+            checkboxes.forEach(cb => {
+                const row = cb.closest('tr');
+                if (row.style.display !== 'none') {
+                    cb.checked = el.checked;
+                }
+            });
+            updateFloatingBar();
+        }
+
+        function updateFloatingBar() {
+            const activeTabBtn = document.querySelector('.toggle-btn.active');
+            if(!activeTabBtn) return;
+            const onclickStr = activeTabBtn.getAttribute('onclick');
+            if(!onclickStr) return;
+            const activeTab = onclickStr.match(/'([^']+)'/)[1];
+            
+            const tabContent = document.getElementById(activeTab);
+            if(!tabContent) return;
+            
+            const checkedBoxes = Array.from(tabContent.querySelectorAll('.row-checkbox:checked')).filter(cb => cb.closest('tr').style.display !== 'none');
+            const count = checkedBoxes.length;
+            
+            const bar = document.getElementById('floatingBar');
+            if (count > 0) {
+                document.getElementById('selectedCountText').innerText = count;
+                bar.classList.add('visible');
+                
+                if(activeTab === 'history') {
+                    document.getElementById('bulkSettleBtn').style.display = 'none';
+                } else {
+                    document.getElementById('bulkSettleBtn').style.display = 'inline-flex';
+                }
+            } else {
+                bar.classList.remove('visible');
+            }
+        }
+
+        function bulkAction(action) {
+            const activeTabBtn = document.querySelector('.toggle-btn.active');
+            const activeTab = activeTabBtn.getAttribute('onclick').match(/'([^']+)'/)[1];
+            const tabContent = document.getElementById(activeTab);
+            
+            const checkedBoxes = Array.from(tabContent.querySelectorAll('.row-checkbox:checked')).filter(cb => cb.closest('tr').style.display !== 'none');
+            const ids = checkedBoxes.map(cb => parseInt(cb.value));
+            
+            if (ids.length === 0) return;
+            
+            if (action === 'delete') {
+                if (!confirm(`Are you sure you want to permanently delete ${ids.length} records?`)) return;
+            }
+            
+            const endpoint = action === 'settle' ? '/bulk_settle' : '/bulk_delete';
+            
+            fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ ids: ids })
+            }).then(response => response.json())
+              .then(data => {
+                  if(data.status === 'success') {
+                      window.location.reload();
+                  } else {
+                      alert('An error occurred: ' + (data.message || 'Unknown error'));
+                  }
+              });
         }
 
         // Restore tab and scroll state on page load

@@ -1,6 +1,8 @@
-from flask import Flask, render_template, request, redirect, session
+from flask import Flask, render_template, request, redirect, session, Response
 import sqlite3
 import os
+import csv
+import io
 
 app = Flask(__name__)
 app.secret_key = "secret123"
@@ -176,6 +178,65 @@ def mark_paid(id):
     cursor.execute("UPDATE money_records SET status='paid' WHERE id=?", (id,))
     conn.commit()
     return redirect('/')
+
+
+# ---------------- BULK ACTIONS ---------------- #
+@app.route('/bulk_settle', methods=['POST'])
+def bulk_settle():
+    if 'user_id' not in session:
+        return {"status": "error", "message": "Unauthorized"}, 401
+    
+    data = request.get_json()
+    ids = data.get('ids', [])
+    if ids:
+        # Securely parameterize the IN clause
+        placeholders = ','.join(['?'] * len(ids))
+        cursor.execute(f"UPDATE money_records SET status='paid' WHERE id IN ({placeholders}) AND user_id=?", tuple(ids) + (session['user_id'],))
+        conn.commit()
+    return {"status": "success"}
+
+@app.route('/bulk_delete', methods=['POST'])
+def bulk_delete():
+    if 'user_id' not in session:
+        return {"status": "error", "message": "Unauthorized"}, 401
+        
+    data = request.get_json()
+    ids = data.get('ids', [])
+    if ids:
+        placeholders = ','.join(['?'] * len(ids))
+        cursor.execute(f"DELETE FROM money_records WHERE id IN ({placeholders}) AND user_id=?", tuple(ids) + (session['user_id'],))
+        conn.commit()
+    return {"status": "success"}
+
+
+# ---------------- EXPORT CSV ---------------- #
+@app.route('/export/csv')
+def export_csv():
+    if 'user_id' not in session:
+        return redirect('/login')
+
+    user_id = session['user_id']
+    
+    cursor.execute("SELECT * FROM money_records WHERE user_id=? ORDER BY date_taken DESC", (user_id,))
+    records = cursor.fetchall()
+    
+    si = io.StringIO()
+    cw = csv.writer(si)
+    
+    cw.writerow(['ID', 'Date', 'Name', 'Detail', 'Type', 'Status', 'Amount'])
+    
+    for r in records:
+        type_str = "Given" if r[4] == 'given' else "Received"
+        status_str = "Settled" if r[8] == 'paid' else "Pending"
+        cw.writerow([r[0], r[5], r[2], r[6], type_str, status_str, f"{r[3]:.2f}"])
+        
+    output = si.getvalue()
+    
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment;filename=transaction_history.csv"}
+    )
 
 
 # ---------------- PERSON DETAIL ---------------- #
