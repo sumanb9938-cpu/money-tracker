@@ -31,7 +31,12 @@ env/
 *.sqlite3
 instance/
 
+# Migration Scripts
+migrate_sqlite_to_mysql.py
+migrate_to_postgres.py
+
 # Environment Variables & Secrets
+
 .env
 .env.local
 

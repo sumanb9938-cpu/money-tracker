@@ -1,3 +1,5 @@
 Flask
 gunicorn
-mysql-connector-python
+mysql-connector-python
+psycopg2-binary
+

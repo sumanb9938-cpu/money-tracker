@@ -7,87 +7,136 @@ import io
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "secret123")
 
-# ---------------- MYSQL DATABASE CONFIG ---------------- #
-MYSQL_HOST = os.getenv('MYSQL_HOST', 'localhost')
-MYSQL_USER = os.getenv('MYSQL_USER', 'root')
-MYSQL_PASSWORD = os.getenv('MYSQL_PASSWORD', '9938asdf9938')
-MYSQL_DB = os.getenv('MYSQL_DB', 'money_tracker')
-MYSQL_PORT = int(os.getenv('MYSQL_PORT', 3306))
+# ---------------- DATABASE CONFIG (POSTGRESQL / MYSQL DUAL) ---------------- #
+DATABASE_URL = os.getenv('DATABASE_URL')
 
-def get_db():
-    if 'db' not in g:
-        g.db = mysql.connector.connect(
-            host=MYSQL_HOST,
-            user=MYSQL_USER,
-            password=MYSQL_PASSWORD,
-            database=MYSQL_DB,
-            port=MYSQL_PORT
-        )
-    return g.db
+if DATABASE_URL:
+    import psycopg2
+    if DATABASE_URL.startswith('postgres://'):
+        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
 
-@app.teardown_appcontext
-def close_db(exception=None):
-    db = g.pop('db', None)
-    if db is not None and db.is_connected():
-        db.close()
+    def get_db():
+        if 'db' not in g:
+            g.db = psycopg2.connect(DATABASE_URL)
+        return g.db
 
-# ---------------- INITIALIZE DATABASE TABLES ---------------- #
-def init_db():
-    try:
-        # Connect to MySQL server to ensure database exists
-        conn = mysql.connector.connect(
-            host=MYSQL_HOST,
-            user=MYSQL_USER,
-            password=MYSQL_PASSWORD,
-            port=MYSQL_PORT
-        )
-        cursor = conn.cursor()
-        cursor.execute(f"CREATE DATABASE IF NOT EXISTS {MYSQL_DB}")
-        conn.commit()
-        cursor.close()
-        conn.close()
+    @app.teardown_appcontext
+    def close_db(exception=None):
+        db = g.pop('db', None)
+        if db is not None:
+            db.close()
 
-        # Connect to specific database to ensure tables exist
-        conn = mysql.connector.connect(
-            host=MYSQL_HOST,
-            user=MYSQL_USER,
-            password=MYSQL_PASSWORD,
-            database=MYSQL_DB,
-            port=MYSQL_PORT
-        )
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            username VARCHAR(255),
-            password VARCHAR(255),
-            is_admin INT DEFAULT 0,
-            email VARCHAR(255)
-        )
-        ''')
+    def init_db():
+        try:
+            conn = psycopg2.connect(DATABASE_URL)
+            cursor = conn.cursor()
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(255),
+                password VARCHAR(255),
+                is_admin INT DEFAULT 0,
+                email VARCHAR(255)
+            );
+            ''')
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS money_records (
+                id SERIAL PRIMARY KEY,
+                serial_no INT,
+                name VARCHAR(255),
+                amount DOUBLE PRECISION,
+                type VARCHAR(50),
+                date_taken VARCHAR(50),
+                reason TEXT,
+                user_id INT,
+                status VARCHAR(50) DEFAULT 'pending'
+            );
+            ''')
+            conn.commit()
+            cursor.close()
+            conn.close()
+            print("PostgreSQL Database initialized successfully.")
+        except Exception as e:
+            print(f"Warning: Could not initialize PostgreSQL database: {e}")
 
-        cursor.execute('''
-        CREATE TABLE IF NOT EXISTS money_records (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            serial_no INT,
-            name VARCHAR(255),
-            amount DOUBLE,
-            type VARCHAR(50),
-            date_taken VARCHAR(50),
-            reason TEXT,
-            user_id INT,
-            status VARCHAR(50) DEFAULT 'pending'
-        )
-        ''')
-        conn.commit()
-        cursor.close()
-        conn.close()
-        print("MySQL Database initialized successfully.")
-    except Exception as e:
-        print(f"Warning: Could not initialize MySQL database at startup: {e}")
+else:
+    import mysql.connector
+    MYSQL_HOST = os.getenv('MYSQL_HOST', 'localhost')
+    MYSQL_USER = os.getenv('MYSQL_USER', 'root')
+    MYSQL_PASSWORD = os.getenv('MYSQL_PASSWORD', '9938asdf9938')
+    MYSQL_DB = os.getenv('MYSQL_DB', 'money_tracker')
+    MYSQL_PORT = int(os.getenv('MYSQL_PORT', 3306))
+
+    def get_db():
+        if 'db' not in g:
+            g.db = mysql.connector.connect(
+                host=MYSQL_HOST,
+                user=MYSQL_USER,
+                password=MYSQL_PASSWORD,
+                database=MYSQL_DB,
+                port=MYSQL_PORT
+            )
+        return g.db
+
+    @app.teardown_appcontext
+    def close_db(exception=None):
+        db = g.pop('db', None)
+        if db is not None and db.is_connected():
+            db.close()
+
+    def init_db():
+        try:
+            conn = mysql.connector.connect(
+                host=MYSQL_HOST,
+                user=MYSQL_USER,
+                password=MYSQL_PASSWORD,
+                port=MYSQL_PORT
+            )
+            cursor = conn.cursor()
+            cursor.execute(f"CREATE DATABASE IF NOT EXISTS {MYSQL_DB}")
+            conn.commit()
+            cursor.close()
+            conn.close()
+
+            conn = mysql.connector.connect(
+                host=MYSQL_HOST,
+                user=MYSQL_USER,
+                password=MYSQL_PASSWORD,
+                database=MYSQL_DB,
+                port=MYSQL_PORT
+            )
+            cursor = conn.cursor()
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(255),
+                password VARCHAR(255),
+                is_admin INT DEFAULT 0,
+                email VARCHAR(255)
+            )
+            ''')
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS money_records (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                serial_no INT,
+                name VARCHAR(255),
+                amount DOUBLE,
+                type VARCHAR(50),
+                date_taken VARCHAR(50),
+                reason TEXT,
+                user_id INT,
+                status VARCHAR(50) DEFAULT 'pending'
+            )
+            ''')
+            conn.commit()
+            cursor.close()
+            conn.close()
+            print("MySQL Database initialized successfully.")
+        except Exception as e:
+            print(f"Warning: Could not initialize MySQL database: {e}")
 
 init_db()
+
 
 
 
