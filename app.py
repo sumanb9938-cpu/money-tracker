@@ -12,8 +12,12 @@ DATABASE_URL = os.getenv('DATABASE_URL')
 
 if DATABASE_URL:
     import psycopg2
+    DATABASE_URL = DATABASE_URL.strip().strip('"').strip("'")
+    if 'sslmode=' in DATABASE_URL:
+        DATABASE_URL = DATABASE_URL.replace('sslmode="require"', 'sslmode=require').replace("sslmode='require'", 'sslmode=require')
     if DATABASE_URL.startswith('postgres://'):
         DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+
 
     def get_db():
         if 'db' not in g:
