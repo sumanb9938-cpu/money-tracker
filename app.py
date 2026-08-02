@@ -12,6 +12,7 @@ MYSQL_HOST = os.getenv('MYSQL_HOST', 'localhost')
 MYSQL_USER = os.getenv('MYSQL_USER', 'root')
 MYSQL_PASSWORD = os.getenv('MYSQL_PASSWORD', '9938asdf9938')
 MYSQL_DB = os.getenv('MYSQL_DB', 'money_tracker')
+MYSQL_PORT = int(os.getenv('MYSQL_PORT', 3306))
 
 def get_db():
     if 'db' not in g:
@@ -19,7 +20,8 @@ def get_db():
             host=MYSQL_HOST,
             user=MYSQL_USER,
             password=MYSQL_PASSWORD,
-            database=MYSQL_DB
+            database=MYSQL_DB,
+            port=MYSQL_PORT
         )
     return g.db
 
@@ -31,55 +33,62 @@ def close_db(exception=None):
 
 # ---------------- INITIALIZE DATABASE TABLES ---------------- #
 def init_db():
-    # Connect to MySQL server to ensure database exists
-    conn = mysql.connector.connect(
-        host=MYSQL_HOST,
-        user=MYSQL_USER,
-        password=MYSQL_PASSWORD
-    )
-    cursor = conn.cursor()
-    cursor.execute(f"CREATE DATABASE IF NOT EXISTS {MYSQL_DB}")
-    conn.commit()
-    cursor.close()
-    conn.close()
+    try:
+        # Connect to MySQL server to ensure database exists
+        conn = mysql.connector.connect(
+            host=MYSQL_HOST,
+            user=MYSQL_USER,
+            password=MYSQL_PASSWORD,
+            port=MYSQL_PORT
+        )
+        cursor = conn.cursor()
+        cursor.execute(f"CREATE DATABASE IF NOT EXISTS {MYSQL_DB}")
+        conn.commit()
+        cursor.close()
+        conn.close()
 
-    # Connect to specific database to ensure tables exist
-    conn = mysql.connector.connect(
-        host=MYSQL_HOST,
-        user=MYSQL_USER,
-        password=MYSQL_PASSWORD,
-        database=MYSQL_DB
-    )
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS users (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        username VARCHAR(255),
-        password VARCHAR(255),
-        is_admin INT DEFAULT 0,
-        email VARCHAR(255)
-    )
-    ''')
+        # Connect to specific database to ensure tables exist
+        conn = mysql.connector.connect(
+            host=MYSQL_HOST,
+            user=MYSQL_USER,
+            password=MYSQL_PASSWORD,
+            database=MYSQL_DB,
+            port=MYSQL_PORT
+        )
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            username VARCHAR(255),
+            password VARCHAR(255),
+            is_admin INT DEFAULT 0,
+            email VARCHAR(255)
+        )
+        ''')
 
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS money_records (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        serial_no INT,
-        name VARCHAR(255),
-        amount DOUBLE,
-        type VARCHAR(50),
-        date_taken VARCHAR(50),
-        reason TEXT,
-        user_id INT,
-        status VARCHAR(50) DEFAULT 'pending'
-    )
-    ''')
-    conn.commit()
-    cursor.close()
-    conn.close()
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS money_records (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            serial_no INT,
+            name VARCHAR(255),
+            amount DOUBLE,
+            type VARCHAR(50),
+            date_taken VARCHAR(50),
+            reason TEXT,
+            user_id INT,
+            status VARCHAR(50) DEFAULT 'pending'
+        )
+        ''')
+        conn.commit()
+        cursor.close()
+        conn.close()
+        print("MySQL Database initialized successfully.")
+    except Exception as e:
+        print(f"Warning: Could not initialize MySQL database at startup: {e}")
 
 init_db()
+
 
 
 # ---------------- LOGIN ---------------- #
