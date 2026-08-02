@@ -8,16 +8,25 @@ app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "secret123")
 
 # ---------------- DATABASE CONFIG (POSTGRESQL / MYSQL DUAL) ---------------- #
-DATABASE_URL = os.getenv('DATABASE_URL')
+def clean_db_url(url):
+    if not url:
+        return url
+    url = url.strip().strip('"').strip("'")
+    while url and url[-1] in ('"', "'"):
+        url = url[:-1]
+    url = url.replace('sslmode="require"', 'sslmode=require')
+    url = url.replace("sslmode='require'", 'sslmode=require')
+    url = url.replace('sslmode=require"', 'sslmode=require')
+    url = url.replace("sslmode=require'", 'sslmode=require')
+    if url.startswith('postgres://'):
+        url = url.replace('postgres://', 'postgresql://', 1)
+    return url
+
+RAW_DB_URL = os.getenv('DATABASE_URL')
+DATABASE_URL = clean_db_url(RAW_DB_URL)
 
 if DATABASE_URL:
     import psycopg2
-    DATABASE_URL = DATABASE_URL.strip().strip('"').strip("'")
-    if 'sslmode=' in DATABASE_URL:
-        DATABASE_URL = DATABASE_URL.replace('sslmode="require"', 'sslmode=require').replace("sslmode='require'", 'sslmode=require')
-    if DATABASE_URL.startswith('postgres://'):
-        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
-
 
     def get_db():
         if 'db' not in g:
@@ -62,6 +71,7 @@ if DATABASE_URL:
             print("PostgreSQL Database initialized successfully.")
         except Exception as e:
             print(f"Warning: Could not initialize PostgreSQL database: {e}")
+
 
 else:
     import mysql.connector
