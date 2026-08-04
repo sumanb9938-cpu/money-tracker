@@ -14,12 +14,18 @@ except ImportError:
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "secret123")
 
+# Allow HTTP for local testing with Authlib
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+
 # ---------------- GOOGLE OAUTH CONFIG ---------------- #
+GOOGLE_CLIENT_ID = (os.getenv('GOOGLE_CLIENT_ID') or '').strip().strip('"').strip("'")
+GOOGLE_CLIENT_SECRET = (os.getenv('GOOGLE_CLIENT_SECRET') or '').strip().strip('"').strip("'")
+
 oauth = OAuth(app)
 google = oauth.register(
     name='google',
-    client_id=os.getenv('GOOGLE_CLIENT_ID'),
-    client_secret=os.getenv('GOOGLE_CLIENT_SECRET'),
+    client_id=GOOGLE_CLIENT_ID,
+    client_secret=GOOGLE_CLIENT_SECRET,
     server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
     client_kwargs={'scope': 'openid email profile'}
 )
@@ -215,6 +221,7 @@ def register():
 @app.route('/login/google')
 def login_google():
     redirect_uri = url_for('google_callback', _external=True)
+    print("Initiating Google OAuth with redirect_uri:", redirect_uri)
     return google.authorize_redirect(redirect_uri)
 
 
