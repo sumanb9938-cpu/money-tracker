@@ -3,6 +3,11 @@ import mysql.connector
 import os
 import csv
 import io
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "secret123")
