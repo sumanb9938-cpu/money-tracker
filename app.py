@@ -1,8 +1,10 @@
-from flask import Flask, render_template, request, redirect, session, Response, g
+from flask import Flask, render_template, request, redirect, session, Response, g, url_for
+from authlib.integrations.flask_client import OAuth
 import mysql.connector
 import os
 import csv
 import io
+import secrets
 try:
     from dotenv import load_dotenv
     load_dotenv()
@@ -11,6 +13,16 @@ except ImportError:
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "secret123")
+
+# ---------------- GOOGLE OAUTH CONFIG ---------------- #
+oauth = OAuth(app)
+google = oauth.register(
+    name='google',
+    client_id=os.getenv('GOOGLE_CLIENT_ID'),
+    client_secret=os.getenv('GOOGLE_CLIENT_SECRET'),
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+    client_kwargs={'scope': 'openid email profile'}
+)
 
 # ---------------- DATABASE CONFIG (POSTGRESQL / MYSQL DUAL) ---------------- #
 def clean_db_url(url):
@@ -197,6 +209,50 @@ def register():
         return redirect('/login')
 
     return render_template('register.html')
+
+
+# ---------------- GOOGLE OAUTH ROUTES ---------------- #
+@app.route('/login/google')
+def login_google():
+    redirect_uri = url_for('google_callback', _external=True)
+    return google.authorize_redirect(redirect_uri)
+
+
+@app.route('/login/google/callback')
+def google_callback():
+    try:
+        token = google.authorize_access_token()
+        user_info = token.get('userinfo')
+        if not user_info:
+            user_info = google.get('https://www.googleapis.com/oauth2/v3/userinfo').json()
+
+        email = user_info.get('email')
+        if not email:
+            return render_template('login.html', error="Failed to retrieve email from Google.")
+
+        db = get_db()
+        cursor = db.cursor()
+
+        cursor.execute("SELECT id FROM users WHERE email=%s OR username=%s", (email, email))
+        user = cursor.fetchone()
+
+        if user:
+            session['user_id'] = user[0]
+        else:
+            random_password = secrets.token_hex(16)
+            cursor.execute("INSERT INTO users (username, password, email) VALUES (%s, %s, %s)",
+                           (email, random_password, email))
+            db.commit()
+
+            cursor.execute("SELECT id FROM users WHERE email=%s OR username=%s", (email, email))
+            new_user = cursor.fetchone()
+            if new_user:
+                session['user_id'] = new_user[0]
+
+        return redirect('/')
+    except Exception as e:
+        print("Google Login Error:", e)
+        return render_template('login.html', error="Google authentication failed. Please try again.")
 
 
 # ---------------- HOME ---------------- #
