@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Connections - LedgerPro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #0b0b0e;
+            --card-bg: rgba(20, 20, 25, 0.7);
+            --gold-primary: #d4af37;
+            --gold-light: #f3e5ab;
+            --gold-dark: #aa8c2c;
+            --border-gold: rgba(212, 175, 55, 0.25);
+            --text-main: #e0e0e0;
+            --text-muted: #888899;
+            --accent-green: #28a745;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        .ambient-glow {
+            position: fixed;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.05) 0%, rgba(0,0,0,0) 70%);
+            top: -200px;
+            left: -200px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .glow-2 {
+            top: auto;
+            bottom: -200px;
+            left: auto;
+            right: -200px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            z-index: 1;
+            margin-top: 20px;
+        }
+
+        /* Navbar */
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 25px;
+            background: rgba(20, 20, 25, 0.8);
+            border: 1px solid var(--border-gold);
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            margin-bottom: 30px;
+        }
+
+        .logo-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'Cinzel', serif;
+            font-size: 20px;
+            color: var(--gold-primary);
+            letter-spacing: 1px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--gold-primary), var(--gold-dark));
+            color: #000;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 16px;
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+        }
+
+        .nav-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .gold-btn {
+            background: linear-gradient(135deg, #d4af37, #aa8c2c);
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.2);
+        }
+
+        .gold-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
+            filter: brightness(1.1);
+        }
+
+        .btn-outline {
+            background: rgba(212, 175, 55, 0.1);
+            color: var(--gold-primary);
+            border: 1px solid var(--border-gold);
+            box-shadow: none;
+        }
+
+        .btn-outline:hover {
+            background: rgba(212, 175, 55, 0.2);
+            color: #fff;
+        }
+
+        /* Page Header */
+        .page-header {
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .page-title {
+            font-family: 'Cinzel', serif;
+            font-size: 26px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .page-title i {
+            color: var(--gold-primary);
+        }
+
+        .count-badge {
+            background: rgba(212, 175, 55, 0.15);
+            color: var(--gold-primary);
+            border: 1px solid var(--border-gold);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Connections Grid */
+        .connections-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 20px;
+        }
+
+        .user-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-gold);
+            border-radius: 16px;
+            padding: 22px;
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .user-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(212, 175, 55, 0.5);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), 0 0 20px rgba(212, 175, 55, 0.15);
+        }
+
+        .card-avatar {
+            width: 75px;
+            height: 75px;
+            border-radius: 50%;
+            background: #18181c;
+            border: 2px solid var(--gold-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            color: var(--gold-primary);
+            margin-bottom: 15px;
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.2);
+            overflow: hidden;
+        }
+
+        .card-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .card-name {
+            font-size: 17px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .card-pub-id {
+            color: var(--gold-primary);
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .status-connected {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--accent-green);
+            background: rgba(40, 167, 69, 0.12);
+            border: 1px solid rgba(40, 167, 69, 0.3);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 18px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent-green);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--accent-green);
+        }
+
+        .card-actions {
+            width: 100%;
+            display: flex;
+            gap: 8px;
+        }
+
+        .card-actions .gold-btn {
+            flex: 1;
+            justify-content: center;
+        }
+
+        /* Empty State */
+        .empty-state {
+            background: var(--card-bg);
+            border: 1px dashed var(--border-gold);
+            border-radius: 16px;
+            padding: 50px 20px;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            color: var(--gold-primary);
+            opacity: 0.5;
+            margin-bottom: 15px;
+        }
+
+        /* Profile View Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: #141419;
+            border: 1px solid var(--gold-primary);
+            border-radius: 20px;
+            width: 90%;
+            max-width: 440px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(212, 175, 55, 0.2);
+            position: relative;
+            transform: scale(0.9);
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.active .modal-card {
+            transform: scale(1);
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .close-btn:hover {
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="ambient-glow"></div>
+    <div class="ambient-glow glow-2"></div>
+
+    <div class="container">
+        
+        <!-- Navbar -->
+        <nav class="navbar">
+            <div class="logo-row">
+                <div class="logo-icon"><i class="fas fa-bullseye"></i></div>
+                <div>LEDGER<span style="font-weight:300; opacity:0.8;">PRO</span></div>
+            </div>
+            <div class="nav-actions">
+                <a href="/" class="gold-btn btn-outline"><i class="fas fa-chart-line"></i> Dashboard</a>
+                <a href="/profile" class="gold-btn btn-outline"><i class="fas fa-user-circle"></i> Profile</a>
+                <a href="/logout" class="gold-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </nav>
+
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1 class="page-title">
+                <i class="fas fa-user-friends"></i> My Connections
+            </h1>
+            <span class="count-badge">{{ connections|length }} Connected Users</span>
+        </div>
+
+        <!-- Connections Grid -->
+        {% if connections %}
+        <div class="connections-grid">
+            {% for u in connections %}
+            <div class="user-card">
+                <div class="card-avatar">
+                    {% if u.avatar_url %}
+                    <img src="{{ u.avatar_url }}" alt="{{ u.name }}">
+                    {% else %}
+                    👤
+                    {% endif %}
+                </div>
+                <div class="card-name">👤 {{ u.name }}</div>
+                <div class="card-pub-id">{{ u.public_user_id }}</div>
+                
+                <div class="status-connected">
+                    <span class="status-dot"></span> Connected
+                </div>
+
+                <div class="card-actions">
+                    <button class="gold-btn btn-outline" onclick="openViewModal('{{ u.name }}', '{{ u.public_user_id }}', '{{ u.avatar_url }}')">
+                        <i class="fas fa-id-card"></i> View Profile
+                    </button>
+                    <a href="/?prefill={{ u.public_user_id }}" class="gold-btn">
+                        <i class="fas fa-plus"></i> Record
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <!-- Empty State -->
+        <div class="empty-state">
+            <i class="fas fa-user-plus"></i>
+            <h3 style="color:#fff; font-size:18px; margin-bottom:8px;">No Connected Users Yet</h3>
+            <p style="font-size:13px; max-width:400px; margin:0 auto 20px auto;">Search for your friends using their Public User ID (e.g. MT-8F42K7) to connect and manage money records seamlessly.</p>
+            <a href="/" class="gold-btn"><i class="fas fa-search"></i> Find & Connect Users</a>
+        </div>
+        {% endif %}
+
+    </div>
+
+    <!-- View Profile Modal -->
+    <div class="modal-overlay" id="profileModal">
+        <div class="modal-card">
+            <button class="close-btn" onclick="closeViewModal()">&times;</button>
+            <div class="card-avatar" style="margin: 0 auto 15px auto; width:85px; height:85px; font-size:36px;">
+                <span id="modalAvatar">👤</span>
+            </div>
+            <h2 style="color:#fff; font-size:20px; margin-bottom:5px;" id="modalName">User Name</h2>
+            <div style="color:var(--gold-primary); font-size:14px; font-weight:600; margin-bottom:15px;" id="modalPubId">MT-XXXXXX</div>
+            
+            <div class="status-connected" style="margin-bottom:20px;">
+                <span class="status-dot"></span> Connected Friend
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <a id="modalRecordLink" href="/" class="gold-btn" style="justify-content:center;">
+                    <i class="fas fa-plus-circle"></i> Create Money Record
+                </a>
+                <button type="button" class="gold-btn btn-outline" onclick="closeViewModal()" style="justify-content:center;">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openViewModal(name, pubId, avatarUrl) {
+            document.getElementById('modalName').textContent = '👤 ' + name;
+            document.getElementById('modalPubId').textContent = pubId;
+            document.getElementById('modalRecordLink').href = '/?prefill=' + encodeURIComponent(pubId);
+            
+            const avatarSpan = document.getElementById('modalAvatar');
+            if (avatarUrl) {
+                avatarSpan.innerHTML = `<img src="${avatarUrl}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+            } else {
+                avatarSpan.textContent = '👤';
+            }
+
+            document.getElementById('profileModal').classList.add('active');
+        }
+
+        function closeViewModal() {
+            document.getElementById('profileModal').classList.remove('active');
+        }
+    </script>
+</body>
+</html>
