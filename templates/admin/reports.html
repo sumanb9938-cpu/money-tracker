@@ -1,0 +1,113 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Analytics & Reports{% endblock %}
+{% block header_title %}Platform Reports & Analytics{% endblock %}
+
+{% block content %}
+<style>
+    .reports-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 30px; }
+    .report-card { background: #141417; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 22px; }
+    .report-title { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; }
+</style>
+
+<div class="reports-grid">
+    <div class="report-card">
+        <div class="report-title">
+            <span><i class="fas fa-users" style="color:#d4af37; margin-right:8px;"></i> User Registration Growth</span>
+        </div>
+        <div style="height: 250px;">
+            <canvas id="userGrowthChart"></canvas>
+        </div>
+    </div>
+
+    <div class="report-card">
+        <div class="report-title">
+            <span><i class="fas fa-chart-bar" style="color:#d4af37; margin-right:8px;"></i> Transaction Volume & Settlement Rate</span>
+        </div>
+        <div style="height: 250px;">
+            <canvas id="txVolumeChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="reports-grid">
+    <div class="report-card" style="grid-column: 1 / -1;">
+        <div class="report-title">
+            <span><i class="fas fa-wallet" style="color:#d4af37; margin-right:8px;"></i> Total Financial Cashflow Tracker</span>
+        </div>
+        <div style="height: 260px;">
+            <canvas id="cashflowChart"></canvas>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // User Growth Line Chart
+    const ctxGrowth = document.getElementById('userGrowthChart').getContext('2d');
+    new Chart(ctxGrowth, {
+        type: 'line',
+        data: {
+            labels: {{ report_data.growth_labels|tojson }},
+            datasets: [{
+                label: 'New Registrations',
+                data: {{ report_data.growth_values|tojson }},
+                borderColor: '#d4af37',
+                backgroundColor: 'rgba(212, 175, 55, 0.1)',
+                tension: 0.3,
+                fill: true,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { ticks: { color: '#888' }, grid: { display: false } },
+                y: { ticks: { color: '#888' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+            }
+        }
+    });
+
+    // Transaction Volume Chart
+    const ctxTx = document.getElementById('txVolumeChart').getContext('2d');
+    new Chart(ctxTx, {
+        type: 'pie',
+        data: {
+            labels: ['Settled Records', 'Pending Records'],
+            datasets: [{
+                data: [{{ report_data.settled_tx_count }}, {{ report_data.pending_tx_count }}],
+                backgroundColor: ['#28a745', '#ffc107'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { color: '#ccc' } } }
+        }
+    });
+
+    // Cashflow Financial Chart
+    const ctxFlow = document.getElementById('cashflowChart').getContext('2d');
+    new Chart(ctxFlow, {
+        type: 'bar',
+        data: {
+            labels: ['Total Money Tracked', 'Settled Value', 'Pending Value'],
+            datasets: [{
+                data: [{{ report_data.total_amount }}, {{ report_data.settled_amount }}, {{ report_data.pending_amount }}],
+                backgroundColor: ['#d4af37', '#27ae60', '#e74c3c'],
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { ticks: { color: '#888' }, grid: { display: false } },
+                y: { ticks: { color: '#888' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+            }
+        }
+    });
+</script>
+{% endblock %}

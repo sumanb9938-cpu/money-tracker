@@ -1,0 +1,152 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}User Management{% endblock %}
+{% block header_title %}User Accounts Management{% endblock %}
+
+{% block content %}
+<style>
+    .filter-bar { display: flex; gap: 15px; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+    .search-input-wrap { position: relative; flex: 1; max-width: 400px; }
+    .search-input-wrap i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #666; }
+    .search-input-wrap input {
+        width: 100%; padding: 10px 14px 10px 40px; background: #141417; border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 8px; color: #fff; outline: none; font-size: 13.5px;
+    }
+    .search-input-wrap input:focus { border-color: #d4af37; }
+    
+    .filter-pills { display: flex; gap: 8px; }
+    .pill-btn {
+        padding: 8px 14px; border-radius: 20px; font-size: 12px; font-weight: 500; color: #888;
+        background: #141417; border: 1px solid rgba(255,255,255,0.08); text-decoration: none; cursor: pointer;
+    }
+    .pill-btn:hover, .pill-btn.active { color: #d4af37; background: rgba(212,175,55,0.12); border-color: rgba(212,175,55,0.3); }
+</style>
+
+<div class="filter-bar">
+    <form action="/admin/users" method="GET" class="search-input-wrap">
+        <i class="fas fa-search"></i>
+        <input type="text" name="search" value="{{ search_query }}" placeholder="Search by name, username, email, phone, public ID...">
+        {% if filter_role %}<input type="hidden" name="role" value="{{ filter_role }}">{% endif %}
+        {% if filter_status %}<input type="hidden" name="status" value="{{ filter_status }}">{% endif %}
+    </form>
+
+    <div class="filter-pills">
+        <a href="/admin/users" class="pill-btn {% if not filter_role and not filter_status %}active{% endif %}">All Users</a>
+        <a href="/admin/users?status=active" class="pill-btn {% if filter_status == 'active' %}active{% endif %}">Active</a>
+        <a href="/admin/users?status=inactive" class="pill-btn {% if filter_status == 'inactive' %}active{% endif %}">Deactivated</a>
+        <a href="/admin/users?role=admin" class="pill-btn {% if filter_role == 'admin' %}active{% endif %}">Admins</a>
+        <a href="/admin/users?role=user" class="pill-btn {% if filter_role == 'user' %}active{% endif %}">Normal Users</a>
+    </div>
+</div>
+
+<div class="dark-table-card">
+    <div class="table-responsive">
+        <table class="dark-table">
+            <thead>
+                <tr>
+                    <th>User ID</th>
+                    <th>User Info</th>
+                    <th>Public User ID</th>
+                    <th>Contact Info</th>
+                    <th>Role</th>
+                    <th>Account Status</th>
+                    <th>Registered</th>
+                    <th style="text-align:right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td><code>#{{ u.id }}</code></td>
+                    <td>
+                        <b style="color:#fff;">{{ u.full_name or u.username }}</b>
+                        <br><small style="color:#777;">@{{ u.username }}</small>
+                    </td>
+                    <td><code style="color:#d4af37;">{{ u.public_user_id }}</code></td>
+                    <td style="font-size:12.5px;">
+                        {{ u.email or 'No email' }}
+                        <br><small style="color:#777;">{{ u.phone or 'No phone' }}</small>
+                    </td>
+                    <td>
+                        <span class="badge {% if u.role == 'admin' %}badge-admin{% else %}badge-active{% endif %}">
+                            <i class="fas {% if u.role == 'admin' %}fa-user-shield{% else %}fa-user{% endif %}"></i>
+                            {{ u.role|upper }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge {% if u.is_active == 1 %}badge-active{% else %}badge-inactive{% endif %}">
+                            <i class="fas {% if u.is_active == 1 %}fa-check-circle{% else %}fa-ban{% endif %}"></i>
+                            {% if u.is_active == 1 %}Active{% else %}Deactivated{% endif %}
+                        </span>
+                    </td>
+                    <td style="font-size:12px; color:#888;">{{ u.created_at or '--' }}</td>
+                    <td style="text-align:right;">
+                        <div style="display:inline-flex; gap:6px;">
+                            <a href="/admin/users/{{ u.id }}" class="gold-btn btn-outline" style="padding:4px 10px; font-size:11px;" title="View Details"><i class="fas fa-eye"></i> Details</a>
+
+                            {% if u.is_active == 1 %}
+                            <form action="/admin/users/{{ u.id }}/toggle-status" method="POST" style="margin:0;">
+                                <button type="submit" class="gold-btn btn-danger" style="padding:4px 10px; font-size:11px;" onclick="return confirm('Deactivate account for {{ u.username }}? They will not be able to log in.');"><i class="fas fa-ban"></i> Deactivate</button>
+                            </form>
+                            {% else %}
+                            <form action="/admin/users/{{ u.id }}/toggle-status" method="POST" style="margin:0;">
+                                <button type="submit" class="gold-btn" style="padding:4px 10px; font-size:11px; background:#28a745; color:#fff;" onclick="return confirm('Reactivate account for {{ u.username }}?');"><i class="fas fa-check"></i> Activate</button>
+                            </form>
+                            {% endif %}
+
+                            <button type="button" class="gold-btn btn-outline" style="padding:4px 10px; font-size:11px;" onclick="openRoleModal('{{ u.id }}', '{{ u.username }}', '{{ u.role }}')"><i class="fas fa-user-tag"></i> Role</button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not users %}
+                <tr>
+                    <td colspan="8" style="text-align:center; padding:40px; color:#777; font-style:italic;">No user accounts match the current filter.</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Change Role Modal -->
+<div class="admin-modal" id="roleModal">
+    <div class="modal-box">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:12px;">
+            <h3 style="color:#d4af37; font-size:18px;"><i class="fas fa-user-shield"></i> Change Account Role</h3>
+            <button type="button" onclick="closeRoleModal()" style="background:none; border:none; color:#aaa; font-size:20px; cursor:pointer;">&times;</button>
+        </div>
+        <form action="/admin/users/role" method="POST">
+            <input type="hidden" name="user_id" id="roleUserId">
+            <p style="font-size:13px; color:#ccc; margin-bottom:15px;">Updating permissions for user: <strong id="roleUsernameText" style="color:#fff;">--</strong></p>
+
+            <div style="margin-bottom:20px;">
+                <label style="display:block; font-size:11px; text-transform:uppercase; color:#888; margin-bottom:6px; font-weight:600;">Select Access Role</label>
+                <select name="role" id="roleSelect" style="width:100%; padding:10px 14px; background:#1a1a1d; border:1px solid rgba(212,175,55,0.3); border-radius:8px; color:#fff; font-size:14px; outline:none;">
+                    <option value="user">USER (Standard Application Access)</option>
+                    <option value="admin">ADMIN (Full Platform Control Panel Access)</option>
+                </select>
+            </div>
+
+            <div style="display:flex; gap:10px; justify-content:flex-end;">
+                <button type="button" onclick="closeRoleModal()" class="gold-btn btn-outline">Cancel</button>
+                <button type="submit" class="gold-btn"><i class="fas fa-save"></i> Save Role</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openRoleModal(userId, username, currentRole) {
+    document.getElementById('roleUserId').value = userId;
+    document.getElementById('roleUsernameText').innerText = username;
+    document.getElementById('roleSelect').value = currentRole;
+    document.getElementById('roleModal').classList.add('active');
+}
+function closeRoleModal() {
+    document.getElementById('roleModal').classList.remove('active');
+}
+</script>
+{% endblock %}

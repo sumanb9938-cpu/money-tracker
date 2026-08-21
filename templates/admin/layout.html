@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Admin Panel{% endblock %} - LedgerPro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background-color: #0b0b0e; color: #f0f0f0; min-height: 100vh; display: flex; overflow-x: hidden; }
+
+        /* Ambient Glow */
+        .ambient-glow {
+            position: fixed; border-radius: 50%; pointer-events: none; mix-blend-mode: screen; z-index: 0;
+        }
+        .glow-1 {
+            width: 50vh; height: 50vh; bottom: -10vh; left: -10vh;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.08) 0%, transparent 70%);
+        }
+        .glow-2 {
+            width: 60vh; height: 60vh; top: -15vh; right: -15vh;
+            background: radial-gradient(circle, rgba(189, 147, 66, 0.06) 0%, transparent 70%);
+        }
+
+        /* Sidebar */
+        .admin-sidebar {
+            width: 260px; background: #121215; border-right: 1px solid rgba(212, 175, 55, 0.15);
+            display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0;
+            z-index: 100; transition: transform 0.3s ease;
+        }
+        .sidebar-brand {
+            padding: 24px 20px; display: flex; align-items: center; gap: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06); text-decoration: none; color: #fff;
+        }
+        .brand-icon {
+            width: 36px; height: 36px; border: 1px solid rgba(212, 175, 55, 0.5);
+            border-radius: 10px; display: flex; align-items: center; justify-content: center;
+            color: #d4af37; font-size: 16px; background: rgba(212, 175, 55, 0.1);
+        }
+        .brand-title { font-size: 16px; font-weight: 700; letter-spacing: 1.5px; }
+        .brand-title span { color: #d4af37; font-weight: 300; }
+
+        .sidebar-nav { padding: 20px 12px; display: flex; flex-direction: column; gap: 6px; flex: 1; overflow-y: auto; }
+        .nav-section-title { font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: #666; padding: 12px 12px 6px 12px; font-weight: 700; }
+
+        .nav-item {
+            display: flex; align-items: center; gap: 12px; padding: 11px 14px;
+            color: #aaa; text-decoration: none; border-radius: 8px; font-size: 13.5px; font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .nav-item i { width: 20px; font-size: 15px; text-align: center; color: #777; transition: color 0.2s; }
+        .nav-item:hover { color: #f0f0f0; background: rgba(255, 255, 255, 0.04); }
+        .nav-item:hover i { color: #d4af37; }
+        .nav-item.active {
+            color: #d4af37; background: rgba(212, 175, 55, 0.12);
+            border: 1px solid rgba(212, 175, 55, 0.3); font-weight: 600;
+        }
+        .nav-item.active i { color: #d4af37; }
+
+        .sidebar-footer { padding: 16px 12px; border-top: 1px solid rgba(255, 255, 255, 0.06); }
+        .admin-user-pill {
+            display: flex; align-items: center; gap: 10px; padding: 10px;
+            background: #18181c; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .admin-avatar {
+            width: 34px; height: 34px; border-radius: 50%; background: #d4af37;
+            color: #000; display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 14px;
+        }
+
+        /* Main Content Wrapper */
+        .admin-main { margin-left: 260px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; position: relative; z-index: 10; width: calc(100% - 260px); }
+
+        /* Topbar */
+        .admin-topbar {
+            height: 65px; background: rgba(18, 18, 21, 0.8); backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06); display: flex;
+            align-items: center; justify-content: space-between; padding: 0 30px;
+            position: sticky; top: 0; z-index: 90;
+        }
+        .mobile-menu-btn { display: none; background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; }
+        .topbar-right { display: flex; align-items: center; gap: 15px; }
+
+        .gold-btn {
+            background: linear-gradient(135deg, #dfbc77 0%, #bd9342 100%);
+            color: #000; font-weight: 600; border: none; padding: 9px 16px; border-radius: 8px; font-size: 13px;
+            cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+            box-shadow: 0 4px 15px rgba(189, 147, 66, 0.2);
+        }
+        .gold-btn:hover { transform: translateY(-1px); filter: brightness(1.1); }
+        .gold-btn.btn-outline { background: transparent; color: #d4af37; border: 1px solid rgba(212, 175, 55, 0.4); box-shadow: none; }
+        .gold-btn.btn-outline:hover { background: rgba(212, 175, 55, 0.12); }
+        .gold-btn.btn-danger { background: rgba(220, 53, 69, 0.2); color: #ff6b6b; border: 1px solid rgba(220, 53, 69, 0.4); box-shadow: none; }
+        .gold-btn.btn-danger:hover { background: rgba(220, 53, 69, 0.35); color: #fff; }
+
+        /* Container Body */
+        .content-body { padding: 30px; flex: 1; }
+
+        /* Generic Alert */
+        .alert-banner {
+            padding: 14px 20px; border-radius: 12px; margin-bottom: 25px; font-size: 14px;
+            display: flex; align-items: center; gap: 10px; border: 1px solid transparent;
+        }
+        .alert-banner.error { background: rgba(220, 53, 69, 0.15); border-color: #dc3545; color: #ff6b6b; }
+        .alert-banner.success { background: rgba(40, 167, 69, 0.15); border-color: #28a745; color: #51cf66; }
+
+        /* Data Tables */
+        .dark-table-card {
+            background: #141417; border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .table-responsive { width: 100%; overflow-x: auto; }
+        .dark-table { width: 100%; border-collapse: collapse; text-align: left; }
+        .dark-table th { background: #1a1a1e; padding: 14px 18px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #888; border-bottom: 1px solid rgba(255,255,255,0.06); }
+        .dark-table td { padding: 14px 18px; font-size: 13.5px; border-bottom: 1px solid rgba(255,255,255,0.04); color: #ccc; vertical-align: middle; }
+        .dark-table tr:hover { background: rgba(255,255,255,0.02); }
+
+        /* Status Badges */
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+        .badge-active { background: rgba(40, 167, 69, 0.15); color: #28a745; border: 1px solid rgba(40, 167, 69, 0.3); }
+        .badge-inactive { background: rgba(220, 53, 69, 0.15); color: #dc3545; border: 1px solid rgba(220, 53, 69, 0.3); }
+        .badge-admin { background: rgba(212, 175, 55, 0.18); color: #d4af37; border: 1px solid rgba(212, 175, 55, 0.4); }
+        .badge-pending { background: rgba(255, 193, 7, 0.15); color: #ffc107; border: 1px solid rgba(255, 193, 7, 0.3); }
+
+        /* Modal Base */
+        .admin-modal {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(8px); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px;
+        }
+        .admin-modal.active { display: flex; animation: fadeIn 0.25s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .modal-box {
+            background: #141417; border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 16px;
+            width: 100%; max-width: 520px; padding: 25px; box-shadow: 0 15px 40px rgba(0,0,0,0.9);
+        }
+
+        /* Responsive Breakpoints */
+        @media (max-width: 992px) {
+            .admin-sidebar { transform: translateX(-100%); }
+            .admin-sidebar.open { transform: translateX(0); }
+            .admin-main { margin-left: 0; width: 100%; }
+            .mobile-menu-btn { display: block; }
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+    <div class="ambient-glow glow-1"></div>
+    <div class="ambient-glow glow-2"></div>
+
+    <!-- Sidebar -->
+    <aside class="admin-sidebar" id="adminSidebar">
+        <a href="/admin" class="sidebar-brand">
+            <div class="brand-icon"><i class="fas fa-shield-alt"></i></div>
+            <div class="brand-title">ADMIN <span>PANEL</span></div>
+        </a>
+
+        <nav class="sidebar-nav">
+            <div class="nav-section-title">Core Management</div>
+            <a href="/admin" class="nav-item {% if active_page == 'dashboard' %}active{% endif %}">
+                <i class="fas fa-chart-pie"></i> Dashboard
+            </a>
+            <a href="/admin/users" class="nav-item {% if active_page == 'users' %}active{% endif %}">
+                <i class="fas fa-users"></i> User Management
+            </a>
+            <a href="/admin/transactions" class="nav-item {% if active_page == 'transactions' %}active{% endif %}">
+                <i class="fas fa-exchange-alt"></i> Transactions
+            </a>
+            <a href="/admin/connections" class="nav-item {% if active_page == 'connections' %}active{% endif %}">
+                <i class="fas fa-network-wired"></i> Connections
+            </a>
+
+            <div class="nav-section-title">Insights & Comms</div>
+            <a href="/admin/reports" class="nav-item {% if active_page == 'reports' %}active{% endif %}">
+                <i class="fas fa-chart-line"></i> Analytics & Reports
+            </a>
+            <a href="/admin/announcements" class="nav-item {% if active_page == 'announcements' %}active{% endif %}">
+                <i class="fas fa-bullhorn"></i> Announcements
+            </a>
+            <a href="/admin/support" class="nav-item {% if active_page == 'support' %}active{% endif %}">
+                <i class="fas fa-headset"></i> Support Tickets
+            </a>
+            <a href="/admin/audit_logs" class="nav-item {% if active_page == 'audit_logs' %}active{% endif %}">
+                <i class="fas fa-history"></i> Audit Logs
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="admin-user-pill">
+                <div class="admin-avatar">{{ session.get('username', 'A')[0]|upper }}</div>
+                <div style="flex:1; overflow:hidden;">
+                    <div style="font-size:13px; font-weight:600; color:#fff; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">{{ session.get('username', 'Admin') }}</div>
+                    <div style="font-size:11px; color:#d4af37;">Administrator</div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="admin-main">
+        <header class="admin-topbar">
+            <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+            <div style="font-size:15px; font-weight:600; color:#fff;">
+                <i class="fas fa-tachometer-alt" style="color:#d4af37; margin-right:8px;"></i>
+                {% block header_title %}Admin Control Center{% endblock %}
+            </div>
+
+            <div class="topbar-right">
+                <a href="/" class="gold-btn btn-outline"><i class="fas fa-external-link-alt"></i> Back to User App</a>
+                <a href="/logout" class="gold-btn btn-danger"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </header>
+
+        <main class="content-body">
+            {% if error %}
+            <div class="alert-banner error"><i class="fas fa-exclamation-triangle"></i> <span>{{ error }}</span></div>
+            {% endif %}
+            {% if success %}
+            <div class="alert-banner success"><i class="fas fa-check-circle"></i> <span>{{ success }}</span></div>
+            {% endif %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            document.getElementById('adminSidebar').classList.toggle('open');
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

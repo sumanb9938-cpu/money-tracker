@@ -1,0 +1,121 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}User Details - {{ target_user.full_name or target_user.username }}{% endblock %}
+{% block header_title %}User Account Overview{% endblock %}
+
+{% block content %}
+<style>
+    .profile-header-card {
+        background: #141417; border: 1px solid rgba(212, 175, 55, 0.2); border-radius: 16px;
+        padding: 25px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;
+    }
+    .user-avatar-lg {
+        width: 65px; height: 65px; border-radius: 50%; background: #d4af37; color: #000;
+        display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 700;
+    }
+    .details-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
+    .detail-box { background: #141417; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 18px; }
+    .detail-box .val { font-size: 18px; font-weight: 700; color: #fff; margin-top: 4px; }
+    .detail-box .lbl { font-size: 11px; text-transform: uppercase; color: #777; font-weight: 600; }
+</style>
+
+<div class="profile-header-card">
+    <div style="display:flex; align-items:center; gap:20px;">
+        <div class="user-avatar-lg">{{ target_user.username[0]|upper }}</div>
+        <div>
+            <h2 style="font-size:22px; font-weight:700; color:#fff;">{{ target_user.full_name or target_user.username }}</h2>
+            <div style="font-size:13px; color:#aaa; margin-top:4px;">
+                @{{ target_user.username }} &bull; Public User ID: <code style="color:#d4af37;">{{ target_user.public_user_id }}</code>
+            </div>
+            <div style="margin-top:8px; display:flex; gap:8px;">
+                <span class="badge {% if target_user.role == 'admin' %}badge-admin{% else %}badge-active{% endif %}">{{ target_user.role|upper }}</span>
+                <span class="badge {% if target_user.is_active == 1 %}badge-active{% else %}badge-inactive{% endif %}">{% if target_user.is_active == 1 %}Active Account{% else %}Deactivated Account{% endif %}</span>
+            </div>
+        </div>
+    </div>
+
+    <div style="display:flex; gap:10px;">
+        {% if target_user.is_active == 1 %}
+        <form action="/admin/users/{{ target_user.id }}/toggle-status" method="POST" style="margin:0;">
+            <button type="submit" class="gold-btn btn-danger" onclick="return confirm('Deactivate this user account?');"><i class="fas fa-ban"></i> Deactivate Account</button>
+        </form>
+        {% else %}
+        <form action="/admin/users/{{ target_user.id }}/toggle-status" method="POST" style="margin:0;">
+            <button type="submit" class="gold-btn" style="background:#28a745; color:#fff;" onclick="return confirm('Reactivate this user account?');"><i class="fas fa-check"></i> Reactivate Account</button>
+        </form>
+        {% endif %}
+        <a href="/admin/users" class="gold-btn btn-outline"><i class="fas fa-arrow-left"></i> Back to Users</a>
+    </div>
+</div>
+
+<div class="details-grid">
+    <div class="detail-box">
+        <div class="lbl">Email Address</div>
+        <div class="val" style="font-size:14px;">{{ target_user.email or 'Not provided' }}</div>
+    </div>
+    <div class="detail-box">
+        <div class="lbl">Phone Number</div>
+        <div class="val" style="font-size:14px;">{{ target_user.phone or 'Not provided' }}</div>
+    </div>
+    <div class="detail-box">
+        <div class="lbl">Registration Date</div>
+        <div class="val" style="font-size:14px;">{{ target_user.created_at or '--' }}</div>
+    </div>
+    <div class="detail-box">
+        <div class="lbl">Total Transactions</div>
+        <div class="val">{{ user_stats.total_tx }}</div>
+    </div>
+    <div class="detail-box">
+        <div class="lbl">Pending Transactions</div>
+        <div class="val" style="color:#ffc107;">{{ user_stats.pending_tx }}</div>
+    </div>
+    <div class="detail-box">
+        <div class="lbl">Settled Transactions</div>
+        <div class="val" style="color:#28a745;">{{ user_stats.paid_tx }}</div>
+    </div>
+</div>
+
+<!-- User Transactions List -->
+<div class="dark-table-card" style="padding:22px; margin-bottom:30px;">
+    <div style="font-size:16px; font-weight:600; color:#fff; margin-bottom:15px; display:flex; align-items:center; gap:8px;">
+        <i class="fas fa-exchange-alt" style="color:#d4af37;"></i> Transactions History
+    </div>
+    <div class="table-responsive">
+        <table class="dark-table">
+            <thead>
+                <tr>
+                    <th>Tx ID</th>
+                    <th>Date</th>
+                    <th>Counterparty</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Reason</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in user_records %}
+                <tr>
+                    <td><code>#MT-TX{{ r[0] }}</code></td>
+                    <td style="font-size:12px; color:#888;">{{ r[5] }}</td>
+                    <td><b>{{ r[2] }}</b></td>
+                    <td><span style="color:{% if r[4]=='given' %}#d4af37{% else %}#d65555{% endif %}; font-weight:600;">{% if r[4]=='given' %}To Claim{% else %}To Pay{% endif %}</span></td>
+                    <td style="font-weight:700;">₹{{ r[3] }}</td>
+                    <td>
+                        <span class="badge {% if r[8]=='paid' %}badge-active{% elif r[8]=='verification_pending' %}badge-pending{% else %}badge-pending{% endif %}">
+                            {{ r[8]|capitalize }}
+                        </span>
+                    </td>
+                    <td style="color:#888;">{{ r[6] or '--' }}</td>
+                </tr>
+                {% endfor %}
+                {% if not user_records %}
+                <tr>
+                    <td colspan="7" style="text-align:center; padding:30px; color:#777; font-style:italic;">No transaction records found for this user.</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

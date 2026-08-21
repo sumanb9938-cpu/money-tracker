@@ -318,6 +318,10 @@
             z-index: 3000; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); opacity: 0;
         }
         .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+        .qr-form-hidden { display: none !important; }
+        .status-active { color: #28a745; }
+        .status-none { color: #777; }
     </style>
 </head>
 <body>
@@ -334,6 +338,20 @@
             </div>
             <a href="/" class="gold-btn btn-small"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
         </nav>
+
+        {% if error %}
+        <div style="background: rgba(220, 53, 69, 0.15); border: 1px solid #dc3545; color: #ff6b6b; padding: 14px 20px; border-radius: 12px; margin-bottom: 20px; font-size: 14px; display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span>{{ error }}</span>
+        </div>
+        {% endif %}
+
+        {% if success %}
+        <div style="background: rgba(40, 167, 69, 0.15); border: 1px solid #28a745; color: #51cf66; padding: 14px 20px; border-radius: 12px; margin-bottom: 20px; font-size: 14px; display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-check-circle"></i>
+            <span>{{ success }}</span>
+        </div>
+        {% endif %}
 
         <!-- Profile Header Card -->
         <div class="auth-card">
@@ -391,7 +409,7 @@
 
                 <div class="info-item">
                     <div class="label"><i class="fas fa-qrcode"></i> Payment QR Code</div>
-                    <div class="value" style="color:{% if user.qr_code_data %}#28a745{% else %}#777{% endif %}; font-size:13px;">
+                    <div class="value {% if user.qr_code_data %}status-active{% else %}status-none{% endif %}" style="font-size:13px;">
                         {% if user.qr_code_data %}
                             <i class="fas fa-check-circle"></i> Available
                         {% else %}
@@ -418,7 +436,22 @@
                 <button class="close-modal-btn" onclick="closeModal('editModal')"><i class="fas fa-times"></i></button>
             </div>
 
-            <form action="/profile/edit" method="POST">
+            <form action="/profile/edit" method="POST" enctype="multipart/form-data">
+                {% if error %}
+                <div style="background: rgba(220, 53, 69, 0.15); border: 1px solid #dc3545; color: #ff6b6b; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-size: 13px; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span>{{ error }}</span>
+                </div>
+                {% endif %}
+
+                <div class="form-group">
+                    <label>Public User ID (Read-only)</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-id-badge"></i>
+                        <input type="text" value="{{ user.public_user_id }}" disabled readonly style="opacity: 0.6; cursor: not-allowed; background: #18181c; border-color: rgba(255,255,255,0.1);">
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label>Full Name</label>
                     <div class="input-wrapper">
@@ -444,10 +477,17 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Avatar Image URL (Optional)</label>
+                    <label>Profile Photo URL</label>
                     <div class="input-wrapper">
                         <i class="fas fa-image"></i>
                         <input type="url" name="avatar_url" value="{{ user.avatar_url }}" placeholder="https://example.com/avatar.jpg">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Upload Payment QR Image</label>
+                    <div class="input-wrapper" style="padding: 8px 12px; background: #18181c; border: 1px dashed rgba(212,175,55,0.4); border-radius: 8px;">
+                        <input type="file" name="qr_file" accept="image/*" style="padding:0; background:transparent; border:none; font-size:13px; color:#ccc; width:100%;">
                     </div>
                 </div>
 
@@ -456,6 +496,14 @@
                     <div class="input-wrapper">
                         <i class="fas fa-qrcode"></i>
                         <input type="text" name="qr_code_data" value="{{ user.qr_code_data }}" placeholder="e.g. suman@upi or image URL">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 15px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,0.1);">
+                    <label style="color: #d4af37;"><i class="fas fa-lock"></i> Confirm Password (Required if changing QR)</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-key"></i>
+                        <input type="password" name="confirm_password" placeholder="Enter account password">
                     </div>
                 </div>
 
@@ -471,25 +519,104 @@
     <div class="modal-overlay" id="qrModal">
         <div class="modal-card" style="text-align:center;">
             <div class="modal-header">
-                <h3><i class="fas fa-qrcode" style="color:#d4af37; margin-right:8px;"></i> My Payment QR Code</h3>
+                <h3><i class="fas fa-qrcode" style="color:#d4af37; margin-right:8px;"></i> My Payment QR</h3>
                 <button class="close-modal-btn" onclick="closeModal('qrModal')"><i class="fas fa-times"></i></button>
             </div>
 
-            <div style="padding: 20px 0;">
+            <div style="padding: 15px 0;">
                 {% if user.qr_code_data %}
-                    {% if user.qr_code_data.startswith('http') or user.qr_code_data.startswith('data:') %}
-                        <img src="{{ user.qr_code_data }}" alt="QR Code" style="width: 220px; height: 220px; border-radius: 12px; border: 2px solid #d4af37; box-shadow: 0 0 20px rgba(212,175,55,0.2);">
-                    {% else %}
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data={{ user.qr_code_data }}" alt="UPI QR Code" style="width: 220px; height: 220px; border-radius: 12px; border: 2px solid #d4af37; box-shadow: 0 0 20px rgba(212,175,55,0.2);">
-                        <div style="margin-top:15px; color:#d4af37; font-weight:600; font-size:14px;">UPI / Code: {{ user.qr_code_data }}</div>
-                    {% endif %}
+                    <div id="qrDisplaySection">
+                        <div style="display: flex; justify-content: center; margin-bottom: 15px;">
+                            {% if user.qr_code_data.startswith('/static/') or user.qr_code_data.startswith('http') or user.qr_code_data.startswith('data:') %}
+                                <img src="{{ user.qr_code_data }}" alt="Payment QR Code" style="width: 240px; height: 240px; object-fit: contain; border-radius: 12px; border: 2px solid #d4af37; box-shadow: 0 0 20px rgba(212,175,55,0.25); background: #ffffff; padding: 10px;">
+                            {% else %}
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data={{ user.qr_code_data }}" alt="UPI QR Code" style="width: 240px; height: 240px; border-radius: 12px; border: 2px solid #d4af37; box-shadow: 0 0 20px rgba(212,175,55,0.25); background: #ffffff; padding: 10px;">
+                            {% endif %}
+                        </div>
+
+                        {% if not user.qr_code_data.startswith('/static/') and not user.qr_code_data.startswith('http') and not user.qr_code_data.startswith('data:') %}
+                            <div style="margin-bottom:15px; color:#d4af37; font-weight:600; font-size:14px;">
+                                <i class="fas fa-mobile-alt"></i> UPI / Code: {{ user.qr_code_data }}
+                            </div>
+                        {% endif %}
+
+                        <div style="display:flex; gap:10px; justify-content:center; margin-bottom: 15px;">
+                            <button type="button" class="gold-btn btn-small" onclick="requestQrSecurityStep('upload')"><i class="fas fa-sync-alt"></i> Change QR</button>
+                            <button type="button" class="gold-btn btn-small btn-outline" style="color:#ff6b6b; border-color:rgba(255,107,107,0.4);" onclick="requestQrSecurityStep('remove')"><i class="fas fa-trash-alt"></i> Remove</button>
+                        </div>
+                    </div>
                 {% else %}
-                    <div style="padding: 30px; background: #1a1a1d; border-radius: 12px; border: 1px dashed #444; color: #888;">
-                        <i class="fas fa-qrcode" style="font-size: 40px; margin-bottom: 12px; color: #555;"></i>
-                        <p>No Payment QR Code added yet.</p>
-                        <p style="font-size: 12px; margin-top: 5px; color: #666;">Click Edit Profile to add your UPI ID or QR image URL!</p>
+                    <div id="noQrPlaceholder" style="padding: 25px 20px; background: #18181c; border-radius: 12px; border: 1px dashed rgba(212,175,55,0.3); color: #888; text-align: center; margin-bottom: 15px;">
+                        <i class="fas fa-qrcode" style="font-size: 44px; margin-bottom: 10px; color: #d4af37; opacity: 0.7;"></i>
+                        <p style="color:#f0f0f0; font-weight:500; font-size:14px;">No Payment QR Code Added</p>
+                        <p style="font-size: 12px; margin-top: 4px; color: #777;">Upload an image of your payment QR code or enter your UPI ID below.</p>
+                        <button type="button" class="gold-btn btn-small" style="margin-top: 12px;" onclick="requestQrSecurityStep('upload')"><i class="fas fa-plus-circle"></i> Add QR Code</button>
                     </div>
                 {% endif %}
+
+                <!-- SECURITY VERIFICATION STEP -->
+                <div id="qrSecurityStep" style="display:none; text-align: left; background: #18181c; padding: 20px; border-radius: 12px; border: 1px solid rgba(212,175,55,0.3); margin-top: 10px;">
+                    <h4 style="font-size: 13px; color: #d4af37; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; font-weight: 600;">
+                        <i class="fas fa-lock" style="margin-right:4px;"></i> Security Verification
+                    </h4>
+                    <p style="font-size: 12px; color: #aaa; margin-bottom: 15px;">Changing or removing your payment QR code requires password verification.</p>
+
+                    <div id="qrAuthError" style="display:none; background: rgba(220, 53, 69, 0.15); border: 1px solid #dc3545; color: #ff6b6b; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; font-size: 13px; align-items: center; gap: 8px;">
+                        <i class="fas fa-exclamation-circle"></i> <span id="qrAuthErrorText"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Confirm Password</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-key"></i>
+                            <input type="password" id="qrConfirmPasswordInput" placeholder="Enter account password" autocomplete="off" onkeypress="if(event.key==='Enter'){verifyQrSecurityPassword();}">
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:10px; margin-top:15px;">
+                        <button type="button" class="gold-btn btn-outline btn-small" style="flex:1;" onclick="cancelQrSecurityStep()">Cancel</button>
+                        <button type="button" class="gold-btn btn-small" style="flex:1;" onclick="verifyQrSecurityPassword()"><i class="fas fa-shield-alt"></i> Verify</button>
+                    </div>
+                </div>
+
+                <!-- UPLOAD / CHANGE QR FORM -->
+                <div id="qrUploadFormSection" style="display:none; text-align: left; background: #18181c; padding: 18px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); margin-top: 10px;">
+                    <h4 style="font-size: 13px; color: #d4af37; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; font-weight: 600;">
+                        <i class="fas fa-cloud-upload-alt"></i> Upload / Update Payment QR
+                    </h4>
+
+                    <form action="/profile/qr/upload" method="POST" enctype="multipart/form-data" id="qrUploadForm">
+                        <input type="hidden" name="confirm_password" class="qr-auth-pwd-field">
+                        
+                        <div class="form-group">
+                            <label><i class="fas fa-file-image"></i> Upload QR Code Image</label>
+                            <div class="input-wrapper" style="padding: 8px 12px; background: #141417; border: 1px dashed rgba(212,175,55,0.4); border-radius: 8px;">
+                                <input type="file" name="qr_file" accept="image/*" style="padding: 0; background: transparent; border: none; font-size: 13px; color: #ccc; width: 100%;">
+                            </div>
+                        </div>
+
+                        <div style="text-align: center; margin: 10px 0; color: #666; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">— OR —</div>
+
+                        <div class="form-group">
+                            <label><i class="fas fa-keyboard"></i> Enter UPI ID / Image URL</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-qrcode"></i>
+                                <input type="text" name="qr_text" placeholder="e.g. suman@upi or https://example.com/qr.png">
+                            </div>
+                        </div>
+
+                        <div style="display:flex; gap:10px; margin-top:15px;">
+                            <button type="button" class="gold-btn btn-outline btn-small" style="flex:1;" onclick="cancelQrSecurityStep()">Cancel</button>
+                            <button type="submit" class="gold-btn btn-small" style="flex:1;"><i class="fas fa-save"></i> Save QR</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- REMOVE QR FORM (HIDDEN) -->
+                <form action="/profile/qr/upload" method="POST" id="qrRemoveForm" style="display:none;">
+                    <input type="hidden" name="remove_qr" value="true">
+                    <input type="hidden" name="confirm_password" class="qr-auth-pwd-field">
+                </form>
             </div>
 
             <button class="gold-btn btn-small" style="width: 100%; margin-top: 10px;" onclick="closeModal('qrModal')">Close</button>
@@ -497,9 +624,128 @@
     </div>
 
     <!-- TOAST NOTIFICATION -->
-    <div class="toast" id="toast">Copied to clipboard!</div>
+    <div class="toast" id="toast" data-open-edit="{{ 'true' if open_edit_modal else 'false' }}" data-open-qr="{{ 'true' if open_qr_modal else 'false' }}">Copied to clipboard!</div>
 
     <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const toastEl = document.getElementById('toast');
+            if (toastEl) {
+                if (toastEl.dataset.openEdit === 'true') {
+                    openModal('editModal');
+                } else if (toastEl.dataset.openQr === 'true') {
+                    openModal('qrModal');
+                }
+            }
+        });
+
+        let currentPendingQrAction = null;
+        let verifiedQrPassword = "";
+
+        function requestQrSecurityStep(actionType) {
+            currentPendingQrAction = actionType;
+            if (verifiedQrPassword) {
+                executeVerifiedQrAction(actionType);
+                return;
+            }
+
+            const displaySec = document.getElementById('qrDisplaySection');
+            const placeholderSec = document.getElementById('noQrPlaceholder');
+            const uploadSec = document.getElementById('qrUploadFormSection');
+            const securitySec = document.getElementById('qrSecurityStep');
+
+            if (displaySec) displaySec.style.display = 'none';
+            if (placeholderSec) placeholderSec.style.display = 'none';
+            if (uploadSec) uploadSec.style.display = 'none';
+            
+            if (securitySec) {
+                securitySec.style.display = 'block';
+                const pwdInput = document.getElementById('qrConfirmPasswordInput');
+                if (pwdInput) {
+                    pwdInput.value = '';
+                    pwdInput.focus();
+                }
+            }
+            const errBox = document.getElementById('qrAuthError');
+            if (errBox) errBox.style.display = 'none';
+        }
+
+        function cancelQrSecurityStep() {
+            const securitySec = document.getElementById('qrSecurityStep');
+            const uploadSec = document.getElementById('qrUploadFormSection');
+            const displaySec = document.getElementById('qrDisplaySection');
+            const placeholderSec = document.getElementById('noQrPlaceholder');
+
+            if (securitySec) securitySec.style.display = 'none';
+            if (uploadSec) uploadSec.style.display = 'none';
+            if (displaySec) displaySec.style.display = 'block';
+            if (placeholderSec) placeholderSec.style.display = 'block';
+        }
+
+        function verifyQrSecurityPassword() {
+            const pwdInput = document.getElementById('qrConfirmPasswordInput');
+            const pwd = pwdInput ? pwdInput.value.trim() : '';
+            const errBox = document.getElementById('qrAuthError');
+            const errText = document.getElementById('qrAuthErrorText');
+
+            if (!pwd) {
+                if (errBox && errText) {
+                    errText.innerText = "Please enter your account password.";
+                    errBox.style.display = 'flex';
+                }
+                return;
+            }
+
+            fetch('/api/profile/qr/verify-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: pwd })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    verifiedQrPassword = pwd;
+                    
+                    document.querySelectorAll('.qr-auth-pwd-field').forEach(field => {
+                        field.value = pwd;
+                    });
+
+                    if (errBox) errBox.style.display = 'none';
+                    executeVerifiedQrAction(currentPendingQrAction);
+                } else {
+                    if (errBox && errText) {
+                        errText.innerText = data.message || "Incorrect password. Verification failed.";
+                        errBox.style.display = 'flex';
+                    }
+                }
+            })
+            .catch(err => {
+                if (errBox && errText) {
+                    errText.innerText = "Verification failed. Please try again.";
+                    errBox.style.display = 'flex';
+                }
+            });
+        }
+
+        function executeVerifiedQrAction(actionType) {
+            const securitySec = document.getElementById('qrSecurityStep');
+            if (securitySec) securitySec.style.display = 'none';
+
+            if (actionType === 'remove') {
+                if (confirm('Are you sure you want to remove your payment QR code?')) {
+                    document.getElementById('qrRemoveForm').submit();
+                } else {
+                    cancelQrSecurityStep();
+                }
+            } else {
+                const uploadSec = document.getElementById('qrUploadFormSection');
+                if (uploadSec) uploadSec.style.display = 'block';
+            }
+        }
+
+        function toggleQrUploadForm() {
+            requestQrSecurityStep('upload');
+        }
+
         function openModal(id) {
             document.getElementById(id).classList.add('active');
         }

@@ -1,0 +1,110 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Announcements Management{% endblock %}
+{% block header_title %}System Announcements & Broadcasts{% endblock %}
+
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; flex-wrap:wrap; gap:15px;">
+    <div>
+        <h2 style="font-size:20px; font-weight:700; color:#fff;">System Announcements</h2>
+        <p style="font-size:13px; color:#888; margin-top:2px;">Publish platform announcements to notify all registered Money Tracker users.</p>
+    </div>
+    
+    <button class="gold-btn" onclick="openModal('newAnnModal')">
+        <i class="fas fa-plus-circle"></i> Create Announcement
+    </button>
+</div>
+
+<div class="dark-table-card">
+    <div class="table-responsive">
+        <table class="dark-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Title</th>
+                    <th>Message Content</th>
+                    <th>Status</th>
+                    <th>Created Timestamp</th>
+                    <th style="text-align:right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in announcements %}
+                <tr>
+                    <td><code>#ANN-{{ a.id }}</code></td>
+                    <td><b style="color:#fff;">{{ a.title }}</b></td>
+                    <td style="color:#ccc; font-size:13px; max-width:350px;">{{ a.message }}</td>
+                    <td>
+                        <span class="badge {% if a.status == 'published' %}badge-active{% else %}badge-pending{% endif %}">
+                            <i class="fas {% if a.status == 'published' %}fa-bullhorn{% else %}fa-pen{% endif %}"></i>
+                            {{ a.status|capitalize }}
+                        </span>
+                    </td>
+                    <td style="font-size:12px; color:#888;">{{ a.created_at or '--' }}</td>
+                    <td style="text-align:right;">
+                        <div style="display:inline-flex; gap:6px;">
+                            <form action="/admin/announcements/{{ a.id }}/toggle" method="POST" style="margin:0;">
+                                {% if a.status == 'published' %}
+                                <button type="submit" class="gold-btn btn-outline" style="padding:4px 10px; font-size:11px;" title="Unpublish"><i class="fas fa-eye-slash"></i> Unpublish</button>
+                                {% else %}
+                                <button type="submit" class="gold-btn" style="padding:4px 10px; font-size:11px; background:#28a745; color:#fff;" title="Publish & Notify Users"><i class="fas fa-paper-plane"></i> Publish</button>
+                                {% endif %}
+                            </form>
+
+                            <form action="/admin/announcements/{{ a.id }}/delete" method="POST" style="margin:0;">
+                                <button type="submit" class="gold-btn btn-danger" style="padding:4px 10px; font-size:11px;" onclick="return confirm('Delete announcement?');"><i class="fas fa-trash"></i></button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not announcements %}
+                <tr>
+                    <td colspan="6" style="text-align:center; padding:40px; color:#777; font-style:italic;">No announcements created yet. Click "Create Announcement" to send one.</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- New Announcement Modal -->
+<div class="admin-modal" id="newAnnModal">
+    <div class="modal-box">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:12px;">
+            <h3 style="color:#d4af37; font-size:18px;"><i class="fas fa-bullhorn"></i> New System Announcement</h3>
+            <button type="button" onclick="closeModal('newAnnModal')" style="background:none; border:none; color:#aaa; font-size:20px; cursor:pointer;">&times;</button>
+        </div>
+        <form action="/admin/announcements/create" method="POST">
+            <div style="margin-bottom:15px;">
+                <label style="display:block; font-size:11px; text-transform:uppercase; color:#888; margin-bottom:6px; font-weight:600;">Announcement Title</label>
+                <input type="text" name="title" required placeholder="e.g. Scheduled System Maintenance" style="width:100%; padding:10px 14px; background:#1a1a1d; border:1px solid rgba(212,175,55,0.3); border-radius:8px; color:#fff; font-size:14px; outline:none;">
+            </div>
+
+            <div style="margin-bottom:15px;">
+                <label style="display:block; font-size:11px; text-transform:uppercase; color:#888; margin-bottom:6px; font-weight:600;">Announcement Message</label>
+                <textarea name="message" rows="4" required placeholder="Enter message details for users..." style="width:100%; padding:10px 14px; background:#1a1a1d; border:1px solid rgba(212,175,55,0.3); border-radius:8px; color:#fff; font-size:13px; outline:none; resize:vertical;"></textarea>
+            </div>
+
+            <div style="margin-bottom:20px;">
+                <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:#ccc; cursor:pointer;">
+                    <input type="checkbox" name="publish_now" value="true" checked style="accent-color:#d4af37;">
+                    <span>Publish immediately and send notification to all users</span>
+                </label>
+            </div>
+
+            <div style="display:flex; gap:10px; justify-content:flex-end;">
+                <button type="button" onclick="closeModal('newAnnModal')" class="gold-btn btn-outline">Cancel</button>
+                <button type="submit" class="gold-btn"><i class="fas fa-paper-plane"></i> Post Announcement</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+</script>
+{% endblock %}

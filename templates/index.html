@@ -11,9 +11,6 @@
     <!-- FontAwesome for Icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
-    <!-- Canvas Confetti -->
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
@@ -442,6 +439,29 @@
                 <div>LEDGER<span style="font-weight:300; opacity:0.8;">PRO</span></div>
             </div>
             <div style="display: flex; gap: 10px; align-items: center;">
+                <!-- Notification Bell Dropdown -->
+                <div style="position: relative;">
+                    <button type="button" id="notifBellBtn" onclick="toggleNotifDropdown()" class="gold-btn btn-small" style="background: rgba(212, 175, 55, 0.15); color: #d4af37; border: 1px solid rgba(212, 175, 55, 0.4); box-shadow: none; position: relative;">
+                        <i class="fas fa-bell"></i>
+                        <span id="notifBadge" style="display:none; background:#d65555; color:#fff; font-size:10px; font-weight:bold; padding:2px 6px; border-radius:10px; margin-left:4px;">0</span>
+                    </button>
+
+                    <!-- Notifications Dropdown Menu -->
+                    <div id="notifDropdownMenu" style="display:none; position:absolute; right:0; top:45px; width:340px; background:#141418; border:1px solid #d4af37; border-radius:12px; box-shadow:0 10px 40px rgba(0,0,0,0.9); z-index:2000; padding:15px; animation:fadeUp 0.3s ease;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:10px; margin-bottom:10px;">
+                            <span style="font-weight:600; color:#d4af37; font-size:14px;"><i class="fas fa-bell"></i> Notifications</span>
+                            <button type="button" onclick="markAllNotifsRead()" style="background:none; border:none; color:#888; font-size:11px; cursor:pointer; font-weight:500;" onmouseover="this.style.color='#d4af37'" onmouseout="this.style.color='#888'">Mark all read</button>
+                        </div>
+                        <div id="notifListContainer" style="max-height:280px; overflow-y:auto; font-size:13px; color:#ddd;">
+                            <div style="text-align:center; padding:20px; color:#777;"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if session.get('role') == 'admin' or (user and user.role == 'admin') %}
+                <a href="/admin" class="gold-btn btn-small" style="background: linear-gradient(135deg, #dfbc77 0%, #bd9342 100%); color: #000; font-weight:700;"><i class="fas fa-shield-alt"></i> Admin Panel</a>
+                {% endif %}
+                <button type="button" onclick="openUserSupportModal()" class="gold-btn btn-small" style="background: rgba(212, 175, 55, 0.15); color: #d4af37; border: 1px solid rgba(212, 175, 55, 0.4); box-shadow: none;"><i class="fas fa-headset"></i> Support</button>
                 <a href="/connections" class="gold-btn btn-small" style="background: rgba(212, 175, 55, 0.15); color: #d4af37; border: 1px solid rgba(212, 175, 55, 0.4); box-shadow: none;"><i class="fas fa-user-friends"></i> Connections</a>
                 <a href="/profile" class="gold-btn btn-small" style="background: rgba(212, 175, 55, 0.15); color: #d4af37; border: 1px solid rgba(212, 175, 55, 0.4); box-shadow: none;"><i class="fas fa-user-circle"></i> Profile</a>
                 <a href="/logout" class="gold-btn btn-small"><i class="fas fa-sign-out-alt"></i> Logout</a>
@@ -541,8 +561,26 @@
         </div>
 
         <!-- Add Transaction Form -->
-        <div class="auth-card scroll-zoom-in" style="margin-bottom: 20px;">
-            <h2 class="serif-text">Add New Record</h2>
+        <div class="auth-card scroll-zoom-in" style="margin-bottom: 20px;" id="addRecordCard">
+            <h2 class="serif-text" style="margin-bottom: 15px;">Add New Record</h2>
+            
+            <!-- Quick Search by Public User ID Option -->
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(212,175,55,0.2); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                <label style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #d4af37; font-weight: 600; display: block; margin-bottom: 8px;">
+                    <i class="fas fa-id-card"></i> Transaction With (Search by Public User ID)
+                </label>
+                <div style="display: flex; gap: 10px;">
+                    <div class="input-wrapper" style="flex: 1;">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="addFormPublicIdSearch" placeholder="Search by Public User ID (e.g. MT-8F42K7)" onkeypress="if(event.key==='Enter'){event.preventDefault();searchConnectedUserForAdd();}">
+                    </div>
+                    <button type="button" class="gold-btn btn-small" onclick="searchConnectedUserForAdd()"><i class="fas fa-search"></i> Find</button>
+                </div>
+            </div>
+
+            <!-- Selected User Badge -->
+            <div id="selectedUserChipArea" style="display: none; margin-bottom: 15px;"></div>
+
             <form action="/add" method="POST">
                 <div class="form-grid">
                     
@@ -550,7 +588,7 @@
                         <label>Name</label>
                         <div class="input-wrapper">
                             <i class="far fa-user"></i>
-                            <input type="text" name="name" list="registeredUsersList" placeholder="Person's name or username/email" required autocomplete="off">
+                            <input type="text" name="name" id="addRecordNameInput" list="registeredUsersList" placeholder="Person's name or username/email/ID" required autocomplete="off" oninput="checkConnectedIndicator(this.value)">
                             <datalist id="registeredUsersList">
                                 {% for u in registered_users %}
                                 <option value="{{ u }}"></option>
@@ -594,6 +632,11 @@
                            <input type="text" name="reason" placeholder="e.g. Dinner, Rent...">
                         </div>
                     </div>
+                </div>
+
+                <!-- Connected Transaction Indicator Banner -->
+                <div id="connectedIndicatorBanner" style="display: none; margin-top: 15px; padding: 12px 18px; background: rgba(40, 167, 69, 0.12); border: 1px solid rgba(40, 167, 69, 0.4); border-radius: 10px; color: #28a745; font-size: 13px; font-weight: 500;">
+                    <i class="fas fa-link" style="margin-right: 6px;"></i> <b>🔗 Connected Transaction</b>: This transaction will automatically appear in <span id="connectedBannerUserName" style="font-weight: bold; color: #fff;"></span>'s account.
                 </div>
 
                 <div style="text-align: right; margin-top: 25px; position:relative; z-index:2;">
@@ -647,7 +690,7 @@
                 </tr>
                 {% set cl_count = 0 %}
                 {% for r in records %}
-                {% if r[4]=='given' and r[8]=='pending' %}
+                {% if r[4]=='given' and r[8]!='paid' %}
                 {% set cl_count = cl_count + 1 %}
                 <tr class="transaction-row" data-name="{{ r[2]|lower }}" data-type="{{ r[4] }}">
                     <td data-label="Select"><input type="checkbox" class="row-checkbox" value="{{ r[0] }}" onchange="updateFloatingBar()"></td>
@@ -660,7 +703,11 @@
                     <td data-label="Action">
                         <div class="action-row">
                             <a href="/edit/{{ r[0] }}" class="btn-action edit"><i class="fas fa-pen"></i> Edit</a>
-                            <a href="/mark_paid/{{ r[0] }}" class="btn-action paid"><i class="fas fa-handshake"></i> Settle</a>
+                            {% if r[8] == 'verification_pending' or r[14] %}
+                                <a href="/settlements" class="btn-action paid" style="background:linear-gradient(135deg, #27ae60, #1e8449); color:#fff;" title="Debtor submitted payment proof. Click to verify."><i class="fas fa-clock"></i> Review Proof</a>
+                            {% else %}
+                                <a href="/mark_paid/{{ r[0] }}" class="btn-action paid"><i class="fas fa-handshake"></i> Settle</a>
+                            {% endif %}
                             <a href="/delete/{{ r[0] }}" class="btn-action delete"><i class="fas fa-trash"></i></a>
                         </div>
                     </td>
@@ -668,7 +715,6 @@
                 {% endif %}
                 {% endfor %}
             </table>
-            <!-- Added script tag logic inside jinja doesn't perfectly count on UI side without extra jinja vars, so just an empty table is fine -->
         </div>
 
         <!-- TO PAY -->
@@ -682,7 +728,7 @@
                     <th>Action</th>
                 </tr>
                 {% for r in records %}
-                {% if r[4]=='received' and r[8]=='pending' %}
+                {% if r[4]=='received' and r[8]!='paid' %}
                 <tr class="transaction-row" data-name="{{ r[2]|lower }}" data-type="{{ r[4] }}">
                     <td data-label="Select"><input type="checkbox" class="row-checkbox" value="{{ r[0] }}" onchange="updateFloatingBar()"></td>
                     <td data-label="Name">
@@ -694,7 +740,11 @@
                     <td data-label="Action">
                         <div class="action-row">
                             <a href="/edit/{{ r[0] }}" class="btn-action edit"><i class="fas fa-pen"></i> Edit</a>
-                            <a href="/mark_paid/{{ r[0] }}" class="btn-action paid"><i class="fas fa-handshake"></i> Settle</a>
+                            {% if r[8] == 'verification_pending' or r[14] %}
+                                <span class="badge" style="background:rgba(243, 156, 18, 0.2); border:1px solid #f39c12; color:#f39c12; padding:6px 12px; border-radius:20px; font-size:11px; font-weight:600;"><i class="fas fa-clock"></i> Verification Pending</span>
+                            {% else %}
+                                <button type="button" class="btn-action paid" style="border:none; cursor:pointer;" onclick="openSettlementModal('{{ r[0] }}', '{{ r[10] if r[10] else '' }}', '{{ r[2]|escape }}', '{{ r[3] }}')"><i class="fas fa-upload"></i> Request Verification</button>
+                            {% endif %}
                             <a href="/delete/{{ r[0] }}" class="btn-action delete"><i class="fas fa-trash"></i></a>
                         </div>
                     </td>
@@ -877,14 +927,95 @@
             });
         }
 
-        function quickFillAddRecord(val) {
-            const nameInput = document.querySelector('input[name="name"]');
+        function searchConnectedUserForAdd() {
+            const searchInput = document.getElementById('addFormPublicIdSearch');
+            if(!searchInput) return;
+            const val = searchInput.value.trim();
+            if(!val) {
+                alert('Please enter a Public User ID to search.');
+                return;
+            }
+            
+            fetch('/search_user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ public_id: val })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    const u = data.user;
+                    selectUserForAddRecord(u.name, u.public_user_id);
+                } else {
+                    alert(data.message || 'No user found with this User ID.');
+                }
+            })
+            .catch(() => alert('No user found with this User ID.'));
+        }
+
+        function selectUserForAddRecord(name, pubId) {
+            const nameInput = document.getElementById('addRecordNameInput');
             if(nameInput) {
-                nameInput.value = val;
-                nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                nameInput.focus();
-                nameInput.parentElement.style.boxShadow = '0 0 20px rgba(212, 175, 55, 0.8)';
-                setTimeout(() => { nameInput.parentElement.style.boxShadow = ''; }, 2000);
+                nameInput.value = pubId || name;
+            }
+            
+            const chipArea = document.getElementById('selectedUserChipArea');
+            if(chipArea) {
+                chipArea.style.display = 'block';
+                chipArea.innerHTML = `
+                    <div style="display:inline-flex; align-items:center; gap:10px; background:rgba(212,175,55,0.15); border:1px solid #d4af37; padding:8px 16px; border-radius:20px; animation:fadeUp 0.3s ease;">
+                        <span style="color:#d4af37; font-size:16px;">👤</span>
+                        <span style="color:#fff; font-weight:600; font-size:14px;">${name}</span>
+                        ${pubId ? `<span style="color:#d4af37; font-size:12px; font-weight:500;">(${pubId})</span>` : ''}
+                        <span style="background:#28a745; color:#fff; font-size:10px; font-weight:bold; padding:2px 8px; border-radius:10px; margin-left:5px;"><i class="fas fa-check"></i> Selected</span>
+                        <button type="button" onclick="clearSelectedUserAdd()" style="background:none; border:none; color:#d65555; cursor:pointer; font-size:12px; margin-left:5px;"><i class="fas fa-times"></i></button>
+                    </div>
+                `;
+            }
+            
+            showConnectedBanner(name, pubId);
+        }
+
+        function clearSelectedUserAdd() {
+            const chipArea = document.getElementById('selectedUserChipArea');
+            const banner = document.getElementById('connectedIndicatorBanner');
+            const nameInput = document.getElementById('addRecordNameInput');
+            const searchInput = document.getElementById('addFormPublicIdSearch');
+            
+            if(chipArea) chipArea.style.display = 'none';
+            if(banner) banner.style.display = 'none';
+            if(nameInput) nameInput.value = '';
+            if(searchInput) searchInput.value = '';
+        }
+
+        function showConnectedBanner(name, pubId) {
+            const banner = document.getElementById('connectedIndicatorBanner');
+            const nameSpan = document.getElementById('connectedBannerUserName');
+            if(banner && nameSpan) {
+                nameSpan.innerText = name + (pubId && pubId !== name ? ` (${pubId})` : '');
+                banner.style.display = 'block';
+            }
+        }
+
+        function checkConnectedIndicator(val) {
+            val = val.trim();
+            const banner = document.getElementById('connectedIndicatorBanner');
+            const nameSpan = document.getElementById('connectedBannerUserName');
+            if(!val) {
+                if(banner) banner.style.display = 'none';
+                return;
+            }
+            if(banner && nameSpan) {
+                nameSpan.innerText = val;
+                banner.style.display = 'block';
+            }
+        }
+
+        function quickFillAddRecord(val) {
+            selectUserForAddRecord(val, val);
+            const card = document.getElementById('addRecordCard');
+            if(card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         }
 
@@ -1116,36 +1247,6 @@
             });
         });
 
-        // Interactive Confetti Engine
-        function burstConfetti(x, y) {
-            const colors = ['#d4af37', '#ffd700', '#daa520', '#b8860b'];
-            confetti({
-                particleCount: 100,
-                spread: 120,
-                origin: { x: x / window.innerWidth, y: y / window.innerHeight },
-                colors: colors,
-                zIndex: 9999
-            });
-        }
-
-        // Attach Confetti to form submissions
-        document.querySelectorAll('form').forEach(form => {
-            form.addEventListener('submit', (e) => {
-                e.preventDefault(); 
-                burstConfetti(e.clientX || (window.innerWidth / 2), e.clientY || (window.innerHeight / 2));
-                setTimeout(() => { form.submit(); }, 600);
-            });
-        });
-
-        // Attach Confetti to Mark as Paid link
-        document.querySelectorAll('.btn-action.paid').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                burstConfetti(e.clientX, e.clientY);
-                setTimeout(() => { window.location.href = btn.href; }, 600);
-            });
-        });
-
         // Initialize Charts with Gold-on-Black theme
         const claimAmount = {{ to_claim }};
         const payAmount = {{ to_pay }};
@@ -1252,8 +1353,188 @@
             zoomObserver.observe(el);
         });
 
+        // Notification System Scripts
+        function fetchNotifications() {
+            fetch('/api/notifications')
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    if (data.status === 'success') {
+                        var badge = document.getElementById('notifBadge');
+                        if (badge) {
+                            if (data.unread_count > 0) {
+                                badge.innerText = data.unread_count;
+                                badge.style.display = 'inline-block';
+                            } else {
+                                badge.style.display = 'none';
+                            }
+                        }
+
+                        var listContainer = document.getElementById('notifListContainer');
+                        if (listContainer) {
+                            if (!data.notifications || data.notifications.length === 0) {
+                                listContainer.innerHTML = '<div style="text-align:center; padding:20px; color:#777; font-style:italic;">No notifications yet.</div>';
+                            } else {
+                                var htmlStr = '';
+                                for (var i = 0; i < data.notifications.length; i++) {
+                                    var n = data.notifications[i];
+                                    var bg = n.is_read ? 'transparent' : 'rgba(212,175,55,0.08)';
+                                    var fw = n.is_read ? 'normal' : '600';
+                                    var color = n.is_read ? '#ccc' : '#fff';
+                                    var icon = getNotifIcon(n.type);
+
+                                    htmlStr += '<div style="padding:10px; border-bottom:1px solid rgba(255,255,255,0.05); background:' + bg + '; border-radius:6px; margin-bottom:5px;">' +
+                                        '<div style="font-weight:' + fw + '; color:' + color + '; font-size:12px;">' +
+                                            icon + ' ' + n.message +
+                                        '</div>' +
+                                        '<div style="font-size:10px; color:#777; margin-top:4px; text-align:right;">' + n.created_at + '</div>' +
+                                    '</div>';
+                                }
+                                listContainer.innerHTML = htmlStr;
+                            }
+                        }
+                    }
+                })
+                .catch(function() {});
+        }
+
+        function getNotifIcon(type) {
+            if (type === 'connection_request') return '👤';
+            if (type === 'connection_accepted') return '🤝';
+            if (type === 'transaction_created') return '💸';
+            if (type === 'transaction_edited') return '✏️';
+            if (type === 'transaction_paid') return '✅';
+            return '🔔';
+        }
+
+        function toggleNotifDropdown() {
+            const menu = document.getElementById('notifDropdownMenu');
+            if (menu) {
+                const isHidden = menu.style.display === 'none';
+                menu.style.display = isHidden ? 'block' : 'none';
+                if (isHidden) {
+                    fetchNotifications();
+                }
+            }
+        }
+
+        function markAllNotifsRead() {
+            fetch('/api/notifications/mark_read', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        fetchNotifications();
+                    }
+                });
+        }
+
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('notifDropdownMenu');
+            const btn = document.getElementById('notifBellBtn');
+            if (menu && btn && menu.style.display === 'block' && !menu.contains(e.target) && !btn.contains(e.target)) {
+                menu.style.display = 'none';
+            }
+        });
+
+        setInterval(fetchNotifications, 10000);
+        document.addEventListener('DOMContentLoaded', fetchNotifications);
     </script>
 
+    <!-- SETTLEMENT REQUEST MODAL -->
+    <div id="settlementModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.8); backdrop-filter:blur(6px); align-items:center; justify-content:center;">
+        <div style="background:#1a1a1a; border:1px solid rgba(212,175,55,0.3); border-radius:16px; padding:25px; max-width:480px; width:90%; box-shadow:0 10px 30px rgba(0,0,0,0.8);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:12px;">
+                <h3 style="margin:0; color:#d4af37; font-size:18px;"><i class="fas fa-shield-alt"></i> Settlement Verification Request</h3>
+                <button type="button" onclick="closeSettlementModal()" style="background:none; border:none; color:#aaa; font-size:20px; cursor:pointer;">&times;</button>
+            </div>
+            <p style="font-size:13px; color:#bbb; margin-bottom:20px; line-height:1.4;">
+                As a debtor, you must submit proof of transfer to request settlement verification from <strong id="settleReceiverNameText" style="color:#fff;">the user</strong>.
+            </p>
+            <form action="/settlements/request" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="record_id" id="settleRecordId">
+                <input type="hidden" name="receiver_id" id="settleReceiverId">
+                <input type="hidden" name="redirect_to" id="settleRedirectTo">
 
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; font-size:12px; color:#aaa; margin-bottom:6px; font-weight:600;">Transferred Amount (₹) <span style="color:#e74c3c;">*</span></label>
+                    <input type="number" step="any" name="amount" id="settleAmountInput" required placeholder="Enter transferred amount" style="width:100%; padding:10px 14px; background:#111; border:1px solid #333; border-radius:8px; color:#fff; font-size:14px;">
+                </div>
+
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; font-size:12px; color:#aaa; margin-bottom:6px; font-weight:600;">Upload Transaction Screenshot / Proof <span style="color:#e74c3c;">*</span></label>
+                    <input type="file" name="proof_file" accept="image/*" required style="width:100%; padding:8px 10px; background:#111; border:1px solid #333; border-radius:8px; color:#ccc; font-size:12px;">
+                    <small style="color:#777; font-size:11px; display:block; margin-top:4px;">Upload screenshot of UPI/Bank transfer confirmation.</small>
+                </div>
+
+                <div style="margin-bottom:20px;">
+                    <label style="display:block; font-size:12px; color:#aaa; margin-bottom:6px; font-weight:600;">Note / Transaction Reference (Optional)</label>
+                    <textarea name="note" rows="2" placeholder="e.g., GPay Ref ID 12345678" style="width:100%; padding:10px 14px; background:#111; border:1px solid #333; border-radius:8px; color:#fff; font-size:13px; resize:vertical;"></textarea>
+                </div>
+
+                <div style="display:flex; gap:10px; justify-content:flex-end;">
+                    <button type="button" onclick="closeSettlementModal()" style="padding:10px 18px; background:#333; border:none; border-radius:8px; color:#ccc; font-weight:600; cursor:pointer;">Cancel</button>
+                    <button type="submit" style="padding:10px 20px; background:linear-gradient(135deg, #d4af37, #aa820a); border:none; border-radius:8px; color:#000; font-weight:bold; cursor:pointer;"><i class="fas fa-paper-plane"></i> Submit Request</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- User Report Issue / Support Modal -->
+    <div id="userSupportModal" style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); backdrop-filter:blur(8px); z-index:3000; display:none; align-items:center; justify-content:center; padding:20px;">
+        <div style="background:#141417; border:1px solid rgba(212,175,55,0.4); border-radius:16px; width:100%; max-width:500px; padding:25px; box-shadow:0 15px 40px rgba(0,0,0,0.9);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:12px;">
+                <h3 style="color:#d4af37; font-size:18px; margin:0;"><i class="fas fa-headset"></i> Report a Problem / Support</h3>
+                <button type="button" onclick="closeUserSupportModal()" style="background:none; border:none; color:#aaa; font-size:20px; cursor:pointer;">&times;</button>
+            </div>
+            <form action="/support/submit" method="POST">
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; font-size:11px; text-transform:uppercase; color:#888; margin-bottom:6px; font-weight:600;">Issue Category</label>
+                    <select name="issue_type" style="width:100%; padding:10px 14px; background:#111; border:1px solid rgba(212,175,55,0.3); border-radius:8px; color:#fff; font-size:13.5px; outline:none;">
+                        <option value="Transaction Dispute">Transaction Dispute</option>
+                        <option value="Account & Profile">Account & Profile Issue</option>
+                        <option value="Payment QR Code">Payment QR Code Problem</option>
+                        <option value="Other">Other Query</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; font-size:11px; text-transform:uppercase; color:#888; margin-bottom:6px; font-weight:600;">Subject</label>
+                    <input type="text" name="subject" required placeholder="Brief title of the issue..." style="width:100%; padding:10px 14px; background:#111; border:1px solid rgba(212,175,55,0.3); border-radius:8px; color:#fff; font-size:14px; outline:none;">
+                </div>
+
+                <div style="margin-bottom:20px;">
+                    <label style="display:block; font-size:11px; text-transform:uppercase; color:#888; margin-bottom:6px; font-weight:600;">Message Details</label>
+                    <textarea name="message" rows="4" required placeholder="Describe what happened or what help you need..." style="width:100%; padding:10px 14px; background:#111; border:1px solid rgba(212,175,55,0.3); border-radius:8px; color:#fff; font-size:13px; outline:none; resize:vertical;"></textarea>
+                </div>
+
+                <div style="display:flex; gap:10px; justify-content:flex-end;">
+                    <button type="button" onclick="closeUserSupportModal()" style="padding:10px 18px; background:#333; border:none; border-radius:8px; color:#ccc; font-weight:600; cursor:pointer;">Cancel</button>
+                    <button type="submit" style="padding:10px 20px; background:linear-gradient(135deg, #d4af37, #aa820a); border:none; border-radius:8px; color:#000; font-weight:bold; cursor:pointer;"><i class="fas fa-paper-plane"></i> Submit Ticket</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    function openSettlementModal(recordId, receiverId, receiverName, amount) {
+        document.getElementById('settleRecordId').value = recordId || '';
+        document.getElementById('settleReceiverId').value = receiverId || '';
+        document.getElementById('settleReceiverNameText').innerText = receiverName || 'User';
+        document.getElementById('settleAmountInput').value = amount || '';
+        document.getElementById('settleRedirectTo').value = window.location.pathname + window.location.search;
+        document.getElementById('settlementModal').style.display = 'flex';
+    }
+
+    function closeSettlementModal() {
+        document.getElementById('settlementModal').style.display = 'none';
+    }
+
+    function openUserSupportModal() {
+        document.getElementById('userSupportModal').style.display = 'flex';
+    }
+
+    function closeUserSupportModal() {
+        document.getElementById('userSupportModal').style.display = 'none';
+    }
+    </script>
 </body>
 </html>

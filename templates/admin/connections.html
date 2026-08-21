@@ -1,0 +1,67 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Connections Management{% endblock %}
+{% block header_title %}User Connections Network{% endblock %}
+
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; flex-wrap:wrap; gap:15px;">
+    <div>
+        <h2 style="font-size:20px; font-weight:700; color:#fff;">Platform Connections Network</h2>
+        <p style="font-size:13px; color:#888; margin-top:2px;">Monitor connected users, pending requests, and manage invalid relationships.</p>
+    </div>
+    
+    <div style="display:flex; gap:10px;">
+        <span class="badge badge-active" style="padding:8px 14px; font-size:12px;"><i class="fas fa-link"></i> {{ stats.accepted }} Connected Pairs</span>
+        <span class="badge badge-pending" style="padding:8px 14px; font-size:12px;"><i class="fas fa-clock"></i> {{ stats.pending }} Pending Requests</span>
+    </div>
+</div>
+
+<div class="dark-table-card">
+    <div class="table-responsive">
+        <table class="dark-table">
+            <thead>
+                <tr>
+                    <th>Connection ID</th>
+                    <th>Requester User</th>
+                    <th>Receiver User</th>
+                    <th>Status</th>
+                    <th>Created Timestamp</th>
+                    <th style="text-align:right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in connections %}
+                <tr>
+                    <td><code>#CONN-{{ c.id }}</code></td>
+                    <td>
+                        <b style="color:#fff;">{{ c.req_name }}</b>
+                        <br><small style="color:#777;">@{{ c.req_username }} &bull; {{ c.req_public_id }}</small>
+                    </td>
+                    <td>
+                        <b style="color:#fff;">{{ c.rec_name }}</b>
+                        <br><small style="color:#777;">@{{ c.rec_username }} &bull; {{ c.rec_public_id }}</small>
+                    </td>
+                    <td>
+                        <span class="badge {% if c.status == 'accepted' %}badge-active{% elif c.status == 'pending' %}badge-pending{% else %}badge-inactive{% endif %}">
+                            <i class="fas {% if c.status == 'accepted' %}fa-handshake{% elif c.status == 'pending' %}fa-hourglass-half{% else %}fa-times-circle{% endif %}"></i>
+                            {{ c.status|capitalize }}
+                        </span>
+                    </td>
+                    <td style="font-size:12px; color:#888;">{{ c.created_at or '--' }}</td>
+                    <td style="text-align:right;">
+                        <form action="/admin/connections/{{ c.id }}/remove" method="POST" style="margin:0;">
+                            <button type="submit" class="gold-btn btn-danger" style="padding:4px 10px; font-size:11px;" onclick="return confirm('Remove this connection record?');"><i class="fas fa-trash-alt"></i> Remove</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not connections %}
+                <tr>
+                    <td colspan="6" style="text-align:center; padding:40px; color:#777; font-style:italic;">No connection records found.</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

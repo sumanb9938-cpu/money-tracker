@@ -1,0 +1,83 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Global Transactions Ledger{% endblock %}
+{% block header_title %}Global Platform Transactions{% endblock %}
+
+{% block content %}
+<style>
+    .filter-bar { display: flex; gap: 15px; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+    .search-wrap { position: relative; flex: 1; max-width: 400px; }
+    .search-wrap i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #666; }
+    .search-wrap input {
+        width: 100%; padding: 10px 14px 10px 40px; background: #141417; border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 8px; color: #fff; outline: none; font-size: 13.5px;
+    }
+    .search-wrap input:focus { border-color: #d4af37; }
+</style>
+
+<div class="filter-bar">
+    <form action="/admin/transactions" method="GET" class="search-wrap">
+        <i class="fas fa-search"></i>
+        <input type="text" name="search" value="{{ search_query }}" placeholder="Search by Tx ID, user name, public ID, reason...">
+        {% if filter_status %}<input type="hidden" name="status" value="{{ filter_status }}">{% endif %}
+    </form>
+
+    <div style="display:flex; gap:8px;">
+        <a href="/admin/transactions" class="gold-btn btn-outline {% if not filter_status %}active{% endif %}" style="padding:6px 12px; font-size:12px;">All Statuses</a>
+        <a href="/admin/transactions?status=pending" class="gold-btn btn-outline {% if filter_status == 'pending' %}active{% endif %}" style="padding:6px 12px; font-size:12px;">Pending</a>
+        <a href="/admin/transactions?status=paid" class="gold-btn btn-outline {% if filter_status == 'paid' %}active{% endif %}" style="padding:6px 12px; font-size:12px;">Settled / Paid</a>
+    </div>
+</div>
+
+<div class="dark-table-card">
+    <div class="table-responsive">
+        <table class="dark-table">
+            <thead>
+                <tr>
+                    <th>Tx ID</th>
+                    <th>Date</th>
+                    <th>Creator</th>
+                    <th>Counterparty</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Reason / Detail</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in transactions %}
+                <tr>
+                    <td><code style="color:#d4af37;">#MT-TX{{ r.id }}</code></td>
+                    <td style="font-size:12px; color:#888;">{{ r.date_taken or '--' }}</td>
+                    <td>
+                        <b style="color:#fff;">{{ r.creator_name }}</b>
+                        <br><small style="color:#777;">@{{ r.creator_username }}</small>
+                    </td>
+                    <td>
+                        <b style="color:#fff;">{{ r.counterparty_name }}</b>
+                        {% if r.cp_username %}<br><small style="color:#777;">@{{ r.cp_username }}</small>{% endif %}
+                    </td>
+                    <td>
+                        <span style="color:{% if r.type == 'given' %}#d4af37{% else %}#d65555{% endif %}; font-weight:600;">
+                            {% if r.type == 'given' %}Given{% else %}Received{% endif %}
+                        </span>
+                    </td>
+                    <td style="font-weight:700; font-size:15px; color:#fff;">₹{{ r.amount }}</td>
+                    <td>
+                        <span class="badge {% if r.status == 'paid' %}badge-active{% elif r.status == 'verification_pending' %}badge-pending{% else %}badge-pending{% endif %}">
+                            {{ r.status|capitalize }}
+                        </span>
+                    </td>
+                    <td style="color:#aaa; font-size:12.5px;">{{ r.reason or '--' }}</td>
+                </tr>
+                {% endfor %}
+                {% if not transactions %}
+                <tr>
+                    <td colspan="8" style="text-align:center; padding:40px; color:#777; font-style:italic;">No transaction records found.</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

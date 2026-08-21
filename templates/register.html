@@ -341,26 +341,6 @@
             });
         });
 
-        // Interactive Confetti Engine
-        function burstConfetti(x, y) {
-            const colors = ['#d4af37', '#ffd700', '#daa520', '#b8860b'];
-            confetti({
-                particleCount: 100,
-                spread: 120,
-                origin: { x: x / window.innerWidth, y: y / window.innerHeight },
-                colors: colors,
-                zIndex: 9999
-            });
-        }
-
-        // Attach Confetti to form submissions
-        document.querySelectorAll('form').forEach(form => {
-            form.addEventListener('submit', (e) => {
-                e.preventDefault(); 
-                burstConfetti(e.clientX || (window.innerWidth / 2), e.clientY || (window.innerHeight / 2));
-                setTimeout(() => { form.submit(); }, 600);
-            });
-        });
     </script>
 </body>
 </html>
