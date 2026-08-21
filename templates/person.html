@@ -318,7 +318,10 @@
                 <div class="logo-icon"><i class="fas fa-bullseye"></i></div>
                 <div>LEDGER<span style="font-weight:300; opacity:0.8;">PRO</span></div>
             </div>
-            <a href="/" class="gold-btn btn-small"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+            <div style="display:flex; gap:10px;">
+                <a href="/approvals" class="gold-btn btn-small" style="background: rgba(212, 175, 55, 0.15); color: #d4af37; border: 1px solid rgba(212, 175, 55, 0.4); box-shadow: none;"><i class="fas fa-check-double"></i> Approvals {% if nav_total_approvals > 0 %}<span style="background:#d65555; color:#fff; font-size:10px; font-weight:bold; padding:2px 6px; border-radius:10px; margin-left:4px;">{{ nav_total_approvals }}</span>{% endif %}</a>
+                <a href="/" class="gold-btn btn-small"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+            </div>
         </nav>
 
         <h1 class="page-title">{{ name }}</h1>
@@ -375,7 +378,9 @@
                 <td data-label="Amount" class="{% if r[4] == 'given' %}text-golden{% else %}text-danger{% endif %} fw-bold">₹{{ r[3] }}</td>
                 <td data-label="Action">
                     <div class="action-row">
+                        {% if r[4] == 'given' %}
                         <a href="/edit/{{ r[0] }}" class="btn-action edit"><i class="fas fa-pen"></i></a>
+                        {% endif %}
                         {% if r[8] != 'paid' %}
                             {% if r[4] == 'given' %}
                                 {% if r[8] == 'verification_pending' or r[14] %}

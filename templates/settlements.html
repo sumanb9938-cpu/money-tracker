@@ -440,6 +440,7 @@
             </a>
 
             <div class="nav-links">
+                <a href="/approvals" class="gold-btn btn-small btn-outline"><i class="fas fa-check-double"></i> Approvals {% if nav_total_approvals > 0 %}<span style="background:#d65555; color:#fff; font-size:10px; font-weight:bold; padding:2px 6px; border-radius:10px; margin-left:4px;">{{ nav_total_approvals }}</span>{% endif %}</a>
                 <button class="gold-btn btn-small" onclick="openModal('newSettlementModal')">
                     <i class="fas fa-plus-circle"></i> Request Settlement
                 </button>

@@ -611,9 +611,11 @@ def get_user_perspective_records(cursor, current_user_id):
         if is_creator:
             display_name = cp_display
             effective_type = raw_type
+            other_user_id = cp_id
         else:
             display_name = creator_display
             effective_type = 'received' if raw_type == 'given' else 'given'
+            other_user_id = creator_id
 
         amt_str = f"{amount:g}" if isinstance(amount, float) and amount.is_integer() else f"{amount}"
         if effective_type == 'given':
@@ -634,7 +636,7 @@ def get_user_perspective_records(cursor, current_user_id):
             creator_id,       # 7
             status,           # 8
             perspective_text, # 9
-            cp_id,            # 10
+            other_user_id,    # 10 (target user ID for counterparty)
             is_creator,       # 11
             raw_type,         # 12
             raw_name,         # 13
@@ -900,13 +902,24 @@ def edit(id):
         date = request.form['date']
         reason = request.form['reason']
 
-        cursor.execute("SELECT user_id, counterparty_user_id FROM money_records WHERE id=%s AND (user_id=%s OR counterparty_user_id=%s)", (id, user_id, user_id))
+        cursor.execute("SELECT user_id, counterparty_user_id, type FROM money_records WHERE id=%s AND (user_id=%s OR counterparty_user_id=%s)", (id, user_id, user_id))
         existing = cursor.fetchone()
 
         if not existing:
             return redirect(url_for('index', error="Access Denied: You are not authorized to edit this transaction."))
 
-        creator_id = existing[0]
+        creator_id, cp_id_val, raw_type = existing[0], existing[1], existing[2]
+        
+        # Deny edit access if current user is debtor (the person giving back money)
+        is_debtor = False
+        if user_id == creator_id:
+            is_debtor = (raw_type in ('got', 'received'))
+        elif user_id == cp_id_val:
+            is_debtor = (raw_type == 'given')
+
+        if is_debtor:
+            return redirect(url_for('index', error="Access Denied: As the person giving back money (debtor), you cannot edit this transaction record."))
+
         # If editor is counterparty, flip submitted type back to creator's perspective for DB storage
         if user_id == existing[1] and user_id != existing[0]:
             stored_type = 'received' if type_ == 'given' else 'given'
@@ -948,6 +961,10 @@ def edit(id):
 
     if not target_rec:
         return redirect(url_for('index', error="Access Denied: You are not authorized to view or edit this transaction."))
+
+    # r[4] is effective_type for current_user. If effective_type == 'received', user is debtor!
+    if target_rec[4] == 'received':
+        return redirect(url_for('index', error="Access Denied: As the person giving back money (debtor), you cannot edit this transaction record."))
 
     return render_template("edit.html", r=target_rec)
 
@@ -1662,6 +1679,18 @@ def request_settlement():
     db = get_db()
     cursor = db.cursor()
 
+    rec_id_val = int(record_id) if record_id and record_id.isdigit() else None
+
+    # Fail-safe: if record_id is provided, derive target creditor (receiver_id) directly from money_records
+    if rec_id_val:
+        cursor.execute("SELECT user_id, counterparty_user_id FROM money_records WHERE id = %s AND (user_id = %s OR counterparty_user_id = %s)", (rec_id_val, sender_id, sender_id))
+        rec_info = cursor.fetchone()
+        if rec_info:
+            c_uid, cp_uid = rec_info[0], rec_info[1]
+            record_target_id = cp_uid if sender_id == c_uid else c_uid
+            if record_target_id and record_target_id != sender_id:
+                receiver_id = record_target_id
+
     if not receiver_id and receiver_identifier:
         cursor.execute(
             """
@@ -1681,7 +1710,7 @@ def request_settlement():
             receiver_id = r_row[0]
 
     if not receiver_id:
-        return redirect(url_for('settlements', error="Target user not found. Please select or enter a valid user."))
+        return redirect(url_for('settlements', error="Target user not found. The other party must have a registered account on LedgerPro to receive settlement requests."))
 
     receiver_id = int(receiver_id)
     if receiver_id == sender_id:
@@ -1817,6 +1846,78 @@ def get_pending_settlement_count_api():
     cursor = db.cursor()
     count = get_pending_settlement_count(cursor, user_id)
     return {"status": "success", "count": count}
+
+
+@app.context_processor
+def inject_approvals_context():
+    if 'user_id' in session:
+        try:
+            db = get_db()
+            cursor = db.cursor()
+            user_id = session['user_id']
+            p_settle = get_pending_settlement_count(cursor, user_id)
+            p_conn = len(get_pending_connection_requests(cursor, user_id))
+            return {
+                'nav_pending_settlements': p_settle,
+                'nav_pending_connections': p_conn,
+                'nav_total_approvals': p_settle + p_conn
+            }
+        except Exception:
+            pass
+    return {
+        'nav_pending_settlements': 0,
+        'nav_pending_connections': 0,
+        'nav_total_approvals': 0
+    }
+
+
+@app.route('/approvals')
+def approvals():
+    if 'user_id' not in session:
+        return redirect('/login')
+
+    user_id = session['user_id']
+    db = get_db()
+    cursor = db.cursor()
+
+    settlement_data = get_settlement_requests_for_user(cursor, user_id)
+    pending_settlements = [s for s in settlement_data['received'] if s['status'] == 'pending']
+    history_settlements = [s for s in settlement_data['received'] if s['status'] != 'pending']
+
+    pending_connections = get_pending_connection_requests(cursor, user_id)
+
+    cursor.execute("""
+    SELECT c.id, c.requester_id, c.status, c.created_at, u.username, u.full_name, u.public_user_id, u.avatar_url
+    FROM connections c
+    JOIN users u ON c.requester_id = u.id
+    WHERE c.receiver_id = %s AND c.status != 'pending'
+    ORDER BY c.id DESC LIMIT 10
+    """, (user_id,))
+    history_connections_rows = cursor.fetchall()
+    history_connections = [{
+        "id": r[0],
+        "requester_id": r[1],
+        "status": r[2],
+        "created_at": r[3],
+        "username": r[4],
+        "name": r[5] or r[4] or "User",
+        "public_user_id": r[6],
+        "avatar_url": r[7] or ""
+    } for r in history_connections_rows]
+
+    error = request.args.get('error')
+    success = request.args.get('success')
+
+    return render_template(
+        "approvals.html",
+        pending_settlements=pending_settlements,
+        pending_connections=pending_connections,
+        history_settlements=history_settlements,
+        history_connections=history_connections,
+        total_pending=len(pending_settlements) + len(pending_connections),
+        error=error,
+        success=success
+    )
 
 
 # ==============================================================================

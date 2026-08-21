@@ -462,6 +462,7 @@
                 <a href="/admin" class="gold-btn btn-small" style="background: linear-gradient(135deg, #dfbc77 0%, #bd9342 100%); color: #000; font-weight:700;"><i class="fas fa-shield-alt"></i> Admin Panel</a>
                 {% endif %}
                 <button type="button" onclick="openUserSupportModal()" class="gold-btn btn-small" style="background: rgba(212, 175, 55, 0.15); color: #d4af37; border: 1px solid rgba(212, 175, 55, 0.4); box-shadow: none;"><i class="fas fa-headset"></i> Support</button>
+                <a href="/approvals" class="gold-btn btn-small" style="background: rgba(212, 175, 55, 0.15); color: #d4af37; border: 1px solid rgba(212, 175, 55, 0.4); box-shadow: none; position:relative;"><i class="fas fa-check-double"></i> Approvals {% if nav_total_approvals > 0 %}<span style="background:#d65555; color:#fff; font-size:10px; font-weight:bold; padding:2px 6px; border-radius:10px; margin-left:4px;">{{ nav_total_approvals }}</span>{% endif %}</a>
                 <a href="/connections" class="gold-btn btn-small" style="background: rgba(212, 175, 55, 0.15); color: #d4af37; border: 1px solid rgba(212, 175, 55, 0.4); box-shadow: none;"><i class="fas fa-user-friends"></i> Connections</a>
                 <a href="/profile" class="gold-btn btn-small" style="background: rgba(212, 175, 55, 0.15); color: #d4af37; border: 1px solid rgba(212, 175, 55, 0.4); box-shadow: none;"><i class="fas fa-user-circle"></i> Profile</a>
                 <a href="/logout" class="gold-btn btn-small"><i class="fas fa-sign-out-alt"></i> Logout</a>
@@ -739,7 +740,6 @@
                     <td data-label="Amount" class="text-danger fw-bold">₹{{ r[3] }}</td>
                     <td data-label="Action">
                         <div class="action-row">
-                            <a href="/edit/{{ r[0] }}" class="btn-action edit"><i class="fas fa-pen"></i> Edit</a>
                             {% if r[8] == 'verification_pending' or r[14] %}
                                 <span class="badge" style="background:rgba(243, 156, 18, 0.2); border:1px solid #f39c12; color:#f39c12; padding:6px 12px; border-radius:20px; font-size:11px; font-weight:600;"><i class="fas fa-clock"></i> Verification Pending</span>
                             {% else %}
@@ -1452,6 +1452,7 @@
             <form action="/settlements/request" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="record_id" id="settleRecordId">
                 <input type="hidden" name="receiver_id" id="settleReceiverId">
+                <input type="hidden" name="receiver_identifier" id="settleReceiverIdentifier">
                 <input type="hidden" name="redirect_to" id="settleRedirectTo">
 
                 <div style="margin-bottom:15px;">
@@ -1518,6 +1519,7 @@
     function openSettlementModal(recordId, receiverId, receiverName, amount) {
         document.getElementById('settleRecordId').value = recordId || '';
         document.getElementById('settleReceiverId').value = receiverId || '';
+        document.getElementById('settleReceiverIdentifier').value = receiverName || '';
         document.getElementById('settleReceiverNameText').innerText = receiverName || 'User';
         document.getElementById('settleAmountInput').value = amount || '';
         document.getElementById('settleRedirectTo').value = window.location.pathname + window.location.search;
