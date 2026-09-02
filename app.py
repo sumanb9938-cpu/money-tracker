@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, session, Response, 
 from functools import wraps
 from authlib.integrations.flask_client import OAuth
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.middleware.proxy_fix import ProxyFix
 import mysql.connector
 import os
 import csv
@@ -15,6 +16,7 @@ except ImportError:
     pass
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 app.secret_key = os.getenv("SECRET_KEY", "secret123")
 
 # Allow HTTP for local testing with Authlib
